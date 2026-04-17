@@ -116,6 +116,7 @@ The platform simulates realistic adversarial behavior and systematically evaluat
 - Presentation (in /docs)
 - Project description (this README)
 - Initial agent stubs and system design
+- GitHub repository serves as the technical backbone of the project, including system architecture, agent design, and initial implementation
 
 Note: The system is designed to be extended into a fully functional implementation, with ongoing development planned for complete agent workflows, integrations, and deployment.
 
