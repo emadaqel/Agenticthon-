@@ -1,8 +1,8 @@
 # Red-Team Arena — Agents & Architecture Context
 
-> **Last updated:** Phase 1 complete — stubs removed, guardrail services live  
+> **Last updated:** Phase 4 complete — Laravel 11 dependencies aligned, queued duel job repaired  
 > **Stack:** Laravel 11 · Prism PHP (Laravel AI SDK) · PostgreSQL · Redis · Docker (Sail)  
-> **Running at:** http://localhost (via `docker compose up -d` in `Desktop/RedTeam`)
+> **Running at:** http://localhost (via `docker compose up -d` in `Agenticthon-`)
 
 ---
 
@@ -11,7 +11,7 @@
 | Item | Value |
 |------|-------|
 | Laravel version | 11 (latest) |
-| PHP | 8.5 (inside Sail container) |
+| PHP | 8.2+ |
 | Laravel AI SDK | `prism-php/prism` v0.100.1 |
 | Primary LLM | Groq free tier (`llama3-70b-8192` for agents, `llama3-8b-8192` for target) |
 | Database | PostgreSQL (Sail container) |
@@ -20,7 +20,7 @@
 
 **To start the stack:**
 ```bash
-cd Desktop/RedTeam
+cd Agenticthon-
 docker compose up -d
 ```
 
@@ -50,7 +50,7 @@ LLM_GUARD_URL=http://llm-guard:8001               # Phase 2 — same
   ```
 - **Attack techniques arsenal (10 total):**  
   `direct_jailbreak`, `role_play_framing`, `multi_turn_escalation`, `obfuscation`, `translation_bypass`, `indirect_injection`, `hypothetical_framing`, `authority_impersonation`, `token_smuggling`, `many_shot_priming`
-- **Phase 1 status:** ✅ Implemented — basic prompt generation. Adaptation on block comes in Phase 3.
+- **Status:** ✅ Implemented — prompt generation plus adaptive technique-family rotation after blocked turns.
 
 ---
 
@@ -71,7 +71,7 @@ LLM_GUARD_URL=http://llm-guard:8001               # Phase 2 — same
   - `strict` — block on any risk > 0.3
   - `moderate` — block > 0.6, allow modify 0.3–0.6
   - `permissive` — block > 0.85
-- **Phase 1 status:** ✅ Implemented — LLM-based reasoning. Receives real guardrail scan results in Phase 2.
+- **Status:** ✅ Implemented — programmatic thresholds plus LLM-based reasoning over real guardrail scan results.
 
 ---
 
@@ -169,10 +169,10 @@ LLM_GUARD_URL=http://llm-guard:8001               # Phase 2 — same
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| **Phase 1 — Foundation** | ✅ Complete | Stubs removed, permissions fixed |
-| **Phase 2 — Defense Layer** | ⏳ Next | Start guardrail containers: `docker compose --profile guardrails up -d` |
-| **Phase 3 — Offense + Evaluation** | ⏳ Pending | Attacker adaptation, DeepTeam, Promptfoo |
-| **Phase 4 — Landing Page** | ⏳ Pending | Marketing UI |
+| **Phase 1 — Foundation** | ✅ Complete | Agents, scenarios, persistence, duel loop |
+| **Phase 2 — Defense Layer** | ✅ Complete | NeMo and LLM Guard service integrations with safe-fail behavior |
+| **Phase 3 — Offense + Evaluation** | ✅ Complete | Attacker adaptation and dashboard analytics service |
+| **Phase 4 — Landing Page** | ✅ Complete | Marketing landing page and arena UI |
 
 ---
 

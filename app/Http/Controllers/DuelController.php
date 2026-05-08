@@ -208,6 +208,91 @@ class DuelController extends Controller
         return response()->json(['duels' => $duels]);
     }
 
+    // ─── POST /duels/{scenario}/compare ──────────────────────────────────────
+    public function compare(Request $request, Scenario $scenario)
+    {
+        $models        = $request->input('models', ['llama3-8b-8192', 'llama3-70b-8192']);
+        $policyProfile = $request->input('policy_profile', 'strict');
+        $maxTurns      = (int) $request->input('max_turns', 3);
+        $provider      = $request->input('provider', 'groq');
+
+        $results = [];
+
+        foreach ($models as $modelId) {
+            $duelId  = (string) Str::uuid();
+            $history = [];
+            $turns   = [];
+
+            Cache::put("duel:{$duelId}:status", ['status' => 'running', 'turns' => [], 'summary' => null], 600);
+
+            for ($i = 1; $i <= $maxTurns; $i++) {
+                $attack           = $this->attacker->generate($scenario, $history);
+                $adversarialPrompt = $attack['prompt'] ?? '';
+
+                $nemoInputResult  = $this->nemo->checkInput($adversarialPrompt);
+                $guardInputResult = $this->llmGuard->scanInput($adversarialPrompt);
+
+                if ($nemoInputResult['blocked'] ?? false) {
+                    $turnRecord = $this->buildTurnRecord($duelId, $scenario->id, $i, $attack, $guardInputResult, $nemoInputResult, '—BLOCKED—', ['risk_score' => 1.0], ['blocked' => true], 'BLOCK', 0, $policyProfile);
+                    $turnRecord = array_merge($turnRecord, ['judge_outcome' => 'blue_team_win', 'owasp_category' => 'LLM01', 'judge_reasoning' => 'Input blocked.', 'defender_reasoning' => 'Blocked at input.', 'modified_response' => null, 'tokens_used' => 0]);
+                    $this->persistTurn($turnRecord);
+                    $turns[]   = $turnRecord;
+                    $history[] = $turnRecord;
+                    continue;
+                }
+
+                $modelResult      = $this->gateway->call($adversarialPrompt, $scenario->base_prompt, $modelId, $provider);
+                $nemoOutputResult = $this->nemo->checkOutput($modelResult['response']);
+                $guardOutputResult= $this->llmGuard->scanOutput($modelResult['response']);
+                $defenseResult    = $this->defender->evaluate($adversarialPrompt, $guardInputResult, $modelResult['response'], $guardOutputResult, $policyProfile);
+                $judgeResult      = $this->judge->scoreTurn(array_merge($attack, ['model_response' => $modelResult['response'], 'defender_verdict' => $defenseResult['verdict'] ?? 'BLOCK']));
+
+                $turnRecord = $this->buildTurnRecord($duelId, $scenario->id, $i, $attack, $guardInputResult, $nemoInputResult, $modelResult['response'], $guardOutputResult, $nemoOutputResult, $defenseResult['verdict'] ?? 'BLOCK', $modelResult['latency_ms'] ?? 0, $policyProfile);
+                $turnRecord['judge_outcome']      = $judgeResult['outcome']        ?? 'draw';
+                $turnRecord['owasp_category']     = $judgeResult['owasp_category'] ?? 'LLM01';
+                $turnRecord['judge_reasoning']    = $judgeResult['reasoning']      ?? '';
+                $turnRecord['defender_reasoning'] = $defenseResult['reasoning']    ?? '';
+                $turnRecord['modified_response']  = $defenseResult['modified_response'] ?? null;
+                $turnRecord['tokens_used']        = ($modelResult['tokens_input'] ?? 0) + ($modelResult['tokens_output'] ?? 0);
+
+                $this->persistTurn($turnRecord);
+                $turns[]   = $turnRecord;
+                $history[] = $turnRecord;
+
+                if ($turnRecord['judge_outcome'] === 'red_team_win') break;
+            }
+
+            $summary = $this->judge->summarize($duelId, $scenario->category, $turns);
+
+            DuelSummary::create([
+                'duel_id'               => $duelId,
+                'scenario_id'           => $scenario->id,
+                'target_model'          => $modelId,
+                'policy_profile'        => $policyProfile,
+                'total_turns'           => $summary['total_turns'],
+                'red_team_wins'         => $summary['red_team_wins'],
+                'blue_team_wins'        => $summary['blue_team_wins'],
+                'draws'                 => $summary['draws'],
+                'false_positives'       => $summary['false_positives'],
+                'attack_success_rate'   => $summary['attack_success_rate'],
+                'defense_effectiveness' => $summary['defense_effectiveness'],
+                'owasp_categories'      => $summary['owasp_categories_triggered'],
+            ]);
+
+            Cache::put("duel:{$duelId}:status", ['status' => 'complete', 'turns' => $turns, 'summary' => $summary], 600);
+
+            $results[$modelId] = ['duel_id' => $duelId, 'model' => $modelId, 'summary' => $summary, 'turns' => $turns];
+        }
+
+        $winner = collect($results)->sortBy('summary.attack_success_rate')->keys()->first();
+
+        return response()->json([
+            'scenario'   => $scenario->category,
+            'comparison' => $results,
+            'winner'     => $winner,
+        ]);
+    }
+
     // ─── GET /api/stats ──────────────────────────────────────────────────────
     public function stats()
     {

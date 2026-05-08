@@ -22,7 +22,7 @@ Red-Team Arena pits a **Red Team Attacker** against a **Blue Team Defender** in 
 
 | Component | Technology |
 |-----------|-----------|
-| Backend | Laravel 11 (PHP 8.5) |
+| Backend | Laravel 11 (PHP 8.2+) |
 | AI SDK | Prism PHP v0.100.1 |
 | LLM Provider | Groq (llama3-70b-8192 / llama3-8b-8192) |
 | Database | PostgreSQL |
@@ -56,6 +56,7 @@ docker compose exec laravel.test php artisan db:seed
 ### Optional: Enable Guardrails (Phase 2)
 ```bash
 docker compose --profile guardrails up -d
+docker compose exec laravel.test php artisan config:clear
 ```
 
 ### Health Check
@@ -99,6 +100,15 @@ docker compose exec laravel.test php artisan arena:health
 | `/duels/{duel}/report` | GET | Full duel report |
 | `/duels/history/all` | GET | Browse past duels |
 | `/api/stats` | GET | Analytics dashboard data |
+
+## Project Status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 1 — Foundation | Complete | Agents, scenarios, persistence, duel loop |
+| Phase 2 — Defense Layer | Complete | NeMo and LLM Guard service integrations with safe-fail behavior |
+| Phase 3 — Offense + Evaluation | Complete | Adaptive attacker logic and analytics dashboard service |
+| Phase 4 — Landing Page | Complete | Marketing landing page at `/` and arena UI at `/duels` |
 
 ## License
 
