@@ -44,4 +44,8 @@ return [
         'url' => env('LLM_GUARD_URL', 'http://llm-guard:8001'),
     ],
 
+    'huggingface' => [
+        'api_key' => env('HUGGINGFACE_API_KEY', ''),
+    ],
+
 ];

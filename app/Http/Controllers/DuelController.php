@@ -41,8 +41,10 @@ class DuelController extends Controller
     {
         $maxTurns      = (int) $request->input('max_turns', 3);
         $policyProfile = $request->input('policy_profile', 'strict');
-        $targetModel   = $request->input('target_model', 'llama3-8b-8192');
-        $provider      = $request->input('provider', 'groq');
+        $rawModel      = $request->input('target_model', 'llama3-8b-8192');
+        $rawProvider   = $request->input('provider', 'groq');
+
+        [$targetModel, $provider] = $this->resolveModelAndProvider($rawModel, $rawProvider);
         $async         = (bool) $request->input('async', false);
 
         $duelId = (string) Str::uuid();
@@ -214,11 +216,12 @@ class DuelController extends Controller
         $models        = $request->input('models', ['llama3-8b-8192', 'llama3-70b-8192']);
         $policyProfile = $request->input('policy_profile', 'strict');
         $maxTurns      = (int) $request->input('max_turns', 3);
-        $provider      = $request->input('provider', 'groq');
+        $defaultProvider = $request->input('provider', 'groq');
 
         $results = [];
 
-        foreach ($models as $modelId) {
+        foreach ($models as $rawModelId) {
+            [$modelId, $provider] = $this->resolveModelAndProvider($rawModelId, $defaultProvider);
             $duelId  = (string) Str::uuid();
             $history = [];
             $turns   = [];
@@ -300,6 +303,18 @@ class DuelController extends Controller
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Parse "hf::model/id" prefix → ['model/id', 'huggingface'].
+     * Any other string returns [$model, $fallbackProvider].
+     */
+    private function resolveModelAndProvider(string $model, string $fallbackProvider = 'groq'): array
+    {
+        if (str_starts_with($model, 'hf::')) {
+            return [substr($model, 4), 'huggingface'];
+        }
+        return [$model, $fallbackProvider];
+    }
 
     private function buildTurnRecord(
         string $duelId,

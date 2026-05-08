@@ -11,8 +11,8 @@ class HealthController extends Controller
     {
         $nemoUrl  = config('services.nemo_guardrails.url', 'http://nemo-guardrails:8000');
         $guardUrl = config('services.llm_guard.url', 'http://llm-guard:8001');
-        $groqKey  = env('GROQ_API_KEY', '');
-        $hfKey    = env('HUGGINGFACE_API_KEY', '');
+        $groqKey  = config('prism.providers.groq.api_key', '');
+        $hfKey    = config('services.huggingface.api_key', '');
 
         return response()->json([
             'services' => [

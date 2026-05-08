@@ -802,17 +802,39 @@
                     <div class="form-group">
                         <label>Model A</label>
                         <select class="form-control" x-model="cmpModel1">
-                            <option value="llama3-8b-8192">llama3-8b (Groq)</option>
-                            <option value="llama3-70b-8192">llama3-70b (Groq)</option>
-                            <option value="mixtral-8x7b-32768">Mixtral 8x7B (Groq)</option>
+                            <optgroup label="── Groq ──">
+                                <option value="llama3-8b-8192">Llama 3 8B (fast)</option>
+                                <option value="llama3-70b-8192">Llama 3 70B (smart)</option>
+                                <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
+                                <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                                <option value="gemma2-9b-it">Gemma 2 9B IT</option>
+                            </optgroup>
+                            <optgroup label="── HuggingFace ──">
+                                <option value="hf::mistralai/Mistral-7B-Instruct-v0.3">Mistral 7B v0.3 (HF)</option>
+                                <option value="hf::HuggingFaceH4/zephyr-7b-beta">Zephyr 7B Beta (HF)</option>
+                                <option value="hf::Qwen/Qwen2.5-7B-Instruct">Qwen 2.5 7B (HF)</option>
+                                <option value="hf::microsoft/Phi-3.5-mini-instruct">Phi-3.5 Mini (HF)</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Model B</label>
                         <select class="form-control" x-model="cmpModel2">
-                            <option value="llama3-70b-8192">llama3-70b (Groq)</option>
-                            <option value="llama3-8b-8192">llama3-8b (Groq)</option>
-                            <option value="mixtral-8x7b-32768">Mixtral 8x7B (Groq)</option>
+                            <optgroup label="── Groq ──">
+                                <option value="llama3-70b-8192">Llama 3 70B (smart)</option>
+                                <option value="llama3-8b-8192">Llama 3 8B (fast)</option>
+                                <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
+                                <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                                <option value="gemma2-9b-it">Gemma 2 9B IT</option>
+                            </optgroup>
+                            <optgroup label="── HuggingFace ──">
+                                <option value="hf::mistralai/Mistral-7B-Instruct-v0.3">Mistral 7B v0.3 (HF)</option>
+                                <option value="hf::HuggingFaceH4/zephyr-7b-beta">Zephyr 7B Beta (HF)</option>
+                                <option value="hf::Qwen/Qwen2.5-7B-Instruct">Qwen 2.5 7B (HF)</option>
+                                <option value="hf::microsoft/Phi-3.5-mini-instruct">Phi-3.5 Mini (HF)</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1103,16 +1125,21 @@ function arenaApp() {
         updateModels() {
             if (this.provider === 'huggingface') {
                 this.modelOptions = [
-                    {value:'mistralai/Mistral-7B-Instruct-v0.2', label:'Mistral 7B Instruct'},
-                    {value:'meta-llama/Meta-Llama-3-8B-Instruct', label:'Llama 3 8B Instruct'},
-                    {value:'HuggingFaceH4/zephyr-7b-beta', label:'Zephyr 7B Beta'},
+                    {value:'mistralai/Mistral-7B-Instruct-v0.3',   label:'Mistral 7B Instruct v0.3'},
+                    {value:'HuggingFaceH4/zephyr-7b-beta',          label:'Zephyr 7B Beta'},
+                    {value:'Qwen/Qwen2.5-7B-Instruct',              label:'Qwen 2.5 7B Instruct'},
+                    {value:'microsoft/Phi-3.5-mini-instruct',        label:'Phi-3.5 Mini Instruct'},
+                    {value:'google/gemma-2-2b-it',                   label:'Gemma 2 2B IT'},
                 ];
                 this.targetModel = this.modelOptions[0].value;
             } else {
                 this.modelOptions = [
-                    {value:'llama3-8b-8192', label:'llama3-8b'},
-                    {value:'llama3-70b-8192', label:'llama3-70b'},
-                    {value:'mixtral-8x7b-32768', label:'Mixtral 8x7B'},
+                    {value:'llama3-8b-8192',            label:'Llama 3 8B (fast)'},
+                    {value:'llama3-70b-8192',            label:'Llama 3 70B (smart)'},
+                    {value:'llama-3.3-70b-versatile',   label:'Llama 3.3 70B Versatile'},
+                    {value:'llama-3.1-8b-instant',      label:'Llama 3.1 8B Instant'},
+                    {value:'mixtral-8x7b-32768',         label:'Mixtral 8x7B (long ctx)'},
+                    {value:'gemma2-9b-it',               label:'Gemma 2 9B IT'},
                 ];
                 this.targetModel = this.modelOptions[0].value;
             }

@@ -52,20 +52,57 @@ class ModelGateway
     private function callHuggingFace(string $prompt, string $basePrompt, string $model): array
     {
         $startTime = microtime(true);
-        $apiKey    = env('HUGGINGFACE_API_KEY', '');
+        $apiKey    = config('services.huggingface.api_key', env('HUGGINGFACE_API_KEY', ''));
 
         if (empty($apiKey)) {
             return $this->errorResponse($model, 'huggingface', 'HUGGINGFACE_API_KEY is not configured.', $startTime);
         }
 
+        // Try OpenAI-compatible chat completions endpoint first (modern instruct models)
         try {
             $response = Http::withToken($apiKey)
-                ->timeout(30)
+                ->timeout(60)
+                ->post("https://api-inference.huggingface.co/models/{$model}/v1/chat/completions", [
+                    'model'       => $model,
+                    'messages'    => [
+                        ['role' => 'system',    'content' => $basePrompt],
+                        ['role' => 'user',      'content' => $prompt],
+                    ],
+                    'max_tokens'  => 512,
+                    'temperature' => 0.7,
+                    'stream'      => false,
+                ]);
+
+            $latency = (int) ((microtime(true) - $startTime) * 1000);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                $text = $body['choices'][0]['message']['content'] ?? null;
+
+                if ($text !== null) {
+                    return [
+                        'response'      => trim($text),
+                        'model'         => $model,
+                        'provider'      => 'huggingface',
+                        'latency_ms'    => $latency,
+                        'tokens_input'  => $body['usage']['prompt_tokens'] ?? 0,
+                        'tokens_output' => $body['usage']['completion_tokens'] ?? 0,
+                    ];
+                }
+            }
+        } catch (\Exception) {
+            // fall through to classic endpoint
+        }
+
+        // Fallback: classic text-generation endpoint
+        try {
+            $response = Http::withToken($apiKey)
+                ->timeout(60)
                 ->post("https://api-inference.huggingface.co/models/{$model}", [
-                    'inputs' => "System: {$basePrompt}\n\nUser: {$prompt}\n\nAssistant:",
+                    'inputs'     => "System: {$basePrompt}\n\nUser: {$prompt}\n\nAssistant:",
                     'parameters' => [
-                        'max_new_tokens'  => 512,
-                        'temperature'     => 0.7,
+                        'max_new_tokens'   => 512,
+                        'temperature'      => 0.7,
                         'return_full_text' => false,
                     ],
                 ]);
@@ -74,7 +111,9 @@ class ModelGateway
 
             if ($response->successful()) {
                 $body = $response->json();
-                $text = is_array($body) ? ($body[0]['generated_text'] ?? 'No response generated.') : ($body['generated_text'] ?? 'No response generated.');
+                $text = is_array($body)
+                    ? ($body[0]['generated_text'] ?? 'No response generated.')
+                    : ($body['generated_text'] ?? 'No response generated.');
 
                 return [
                     'response'      => trim($text),
@@ -86,7 +125,7 @@ class ModelGateway
                 ];
             }
 
-            return $this->errorResponse($model, 'huggingface', "HuggingFace API error: HTTP {$response->status()}", $startTime);
+            return $this->errorResponse($model, 'huggingface', "HuggingFace API error: HTTP {$response->status()} — " . $response->body(), $startTime);
 
         } catch (\Exception $e) {
             return $this->errorResponse($model, 'huggingface', $e->getMessage(), $startTime);
