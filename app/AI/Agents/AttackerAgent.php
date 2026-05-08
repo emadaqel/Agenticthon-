@@ -3,7 +3,7 @@
 namespace App\AI\Agents;
 
 use App\Models\Scenario;
-use Prism\Prism\Prism;
+use Prism\Prism\Facades\Prism;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
 use Prism\Prism\ValueObjects\Messages\SystemMessage;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
