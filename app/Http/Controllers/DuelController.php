@@ -45,12 +45,20 @@ class DuelController extends Controller
         $rawProvider   = $request->input('provider', 'groq');
 
         [$targetModel, $provider] = $this->resolveModelAndProvider($rawModel, $rawProvider);
-        $async         = (bool) $request->input('async', false);
+        $async         = filter_var($request->input('async', false), FILTER_VALIDATE_BOOLEAN);
 
         $duelId = (string) Str::uuid();
 
         // Cache initial state
-        Cache::put("duel:{$duelId}:status", ['status' => 'running', 'turns' => [], 'summary' => null], 600);
+        Cache::put("duel:{$duelId}:status", [
+            'status'   => 'running',
+            'turns'    => [],
+            'summary'  => null,
+            'scenario' => $scenario->category,
+            'model'    => $targetModel,
+            'policy'   => $policyProfile,
+            'provider' => $provider,
+        ], 600);
 
         // ── Async mode (dispatches to queue) ─────────────────────────────────
         if ($async) {
@@ -59,6 +67,7 @@ class DuelController extends Controller
             return response()->json([
                 'duel_id'  => $duelId,
                 'status'   => 'queued',
+                'live_url' => route('duels.live', $duelId),
                 'poll_url' => route('duels.status', $duelId),
             ]);
         }
@@ -169,6 +178,12 @@ class DuelController extends Controller
             'summary'  => $summary,
             'turns'    => $turns,
         ]);
+    }
+
+    // ─── GET /duels/{duel}/live ───────────────────────────────────────────────
+    public function live(string $duelId)
+    {
+        return view('duels.live', ['duelId' => $duelId]);
     }
 
     // ─── GET /duels/{duel}/status ──────────────────────────────────────────────

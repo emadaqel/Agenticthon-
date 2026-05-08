@@ -14,6 +14,7 @@ Route::get('/duels',                      [DuelController::class, 'index'])->nam
 Route::post('/duels/{scenario}/run',      [DuelController::class, 'run'])->name('duels.run');
 Route::post('/duels/{scenario}/compare',  [DuelController::class, 'compare'])->name('duels.compare');
 Route::get('/duels/{duel}/status',        [DuelController::class, 'status'])->name('duels.status');
+Route::get('/duels/{duel}/live',          [DuelController::class, 'live'])->name('duels.live');
 Route::get('/duels/{duel}/report',        [DuelController::class, 'report'])->name('duels.report');
 Route::get('/duels/{duel}/report/html',   [ReportController::class, 'html'])->name('duels.report.html');
 Route::get('/duels/history/all',          [DuelController::class, 'history'])->name('duels.history');

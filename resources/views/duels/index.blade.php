@@ -1152,10 +1152,12 @@ function arenaApp() {
                 const r = await fetch(`/duels/${this.activeId}/run`, {
                     method:'POST',
                     headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':CSRF},
-                    body: JSON.stringify({ max_turns: this.maxTurns, policy_profile: this.policyProfile, target_model: this.targetModel, provider: this.provider })
+                    body: JSON.stringify({ max_turns: this.maxTurns, policy_profile: this.policyProfile, target_model: this.targetModel, provider: this.provider, async: true })
                 });
                 const d = await r.json();
                 if (!r.ok) throw new Error(d.message || 'Duel failed.');
+                // Async mode: redirect to live page immediately
+                if (d.live_url) { window.location.href = d.live_url; return; }
                 this.turns = d.turns || [];
                 this.summary = d.summary || null;
                 this.lastDuelId = d.duel_id || null;

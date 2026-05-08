@@ -65,28 +65,34 @@ services:
             retries: 3
             timeout: 5s
 
-    # ─── Phase 2: Guardrail Services ─────────────────────────────────────────
+    # ─── Guardrail Services (custom lightweight implementation) ──────────────
     nemo-guardrails:
-        image: 'nvcr.io/nvidia/nemo-guardrails:latest'
+        build:
+            context: './docker/guardrails'
+            dockerfile: Dockerfile
         ports:
             - '8000:8000'
-        volumes:
-            - './docker/nemo/config:/app/config'
         networks:
             - sail
-        profiles:
-            - guardrails
+        healthcheck:
+            test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
 
     llm-guard:
-        image: 'ghcr.io/protectai/llm-guard-api:latest'
+        build:
+            context: './docker/guardrails'
+            dockerfile: Dockerfile
         ports:
             - '8001:8000'
-        environment:
-            LOG_LEVEL: WARNING
         networks:
             - sail
-        profiles:
-            - guardrails
+        healthcheck:
+            test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
 
 networks:
     sail:
