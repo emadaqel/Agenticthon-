@@ -1,143 +1,58 @@
-# # AI Red-Teaming Arena: Multi-Agent Platform for LLM Safety Testing
-A multi-agent system that simulates adversarial attacks and evaluates AI safety using guardrails, evaluation frameworks, and real-time observability.
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-## Overview
-AI Red-Teaming Arena is a platform for systematically testing and hardening LLM-based systems using a multi-agent architecture. Autonomous attacker agents generate adversarial prompts, while defender agents apply guardrails and safety policies. The system evaluates outcomes, logs traces, and produces measurable metrics to improve model safety before deployment.
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-## Problem
-Modern LLM applications are vulnerable to:
-- Prompt injection and jailbreaks
-- PII leakage and data exfiltration
-- Toxic or harmful outputs
-- Model policy violations
+## About Laravel
 
-Existing workflows lack an interactive, repeatable, and measurable way to stress-test these systems prior to production.
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-## Solution
-The platform simulates realistic adversarial behavior and systematically evaluates defense mechanisms in a controlled, measurable environment:
-- Automated attack generation (single-turn and multi-turn)
-- Programmable defenses via guardrails
-- Centralized evaluation, logging, and metrics
-- Interactive “duel” mode for demonstration and analysis
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
-## Core Architecture
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-### 1) Scenario Layer
-- Curated scenarios across categories: self-harm, hate, PII leakage, prompt injection
-- Templates and seed prompts derived from established red-teaming patterns
+## Learning Laravel
 
-### 2) Attack Engine (Red Team)
-- Attacker agents generate adversarial prompts
-- Strategies: prompt injection, jailbreaks, obfuscation, role-play, multi-turn refinement
-- Coordinator selects strategies and iterates based on previous outcomes
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
 
-### 3) Defense Engine (Blue Team)
-- Guardrails layer:
-  - Input filtering (jailbreak detection, PII masking)
-  - Output filtering (moderation, policy enforcement)
-- Defender agents:
-  - Adjust prompts or guardrail profiles
-  - Block or escalate unsafe outputs
+In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
 
-### 4) Model Gateway
-- Unified endpoint abstracting multiple LLM providers
-- All traffic flows through:
-  Attacker → Input Guardrails → Model → Output Guardrails → Evaluation
-- Ensures provider-agnostic interaction with LLMs
+You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
 
-### 5) Evaluation & Storage
-- Store scenarios, prompts, responses, and decisions
-- Label outcomes (safe/unsafe, blocked/allowed)
-- Export runs for regression testing
+## Agentic Development
 
-### 6) Observability & UI
-- Full trace per run (scenario, agent steps, guardrail decisions)
-- Interactive duel view
-- Analytics (attack success rate, defense effectiveness)
+Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
 
-## System Flow
-1. A scenario is selected
-2. Attacker agent generates an adversarial prompt
-3. Input passes through guardrails
-4. Model generates a response
-5. Output passes through guardrails
-6. Defender agent evaluates and may intervene
-7. Policy evaluation assigns the final verdict
-8. All steps are logged and traced
+```bash
+composer require laravel/boost --dev
 
-## MVP Scope (Hackathon)
-- Interactive duel mode with clear verdicts
-- 5–10 predefined scenarios across key safety categories
-- Integration with at least one guardrails toolkit
-- Basic metrics dashboard (attack success rate, defense effectiveness)
-- Trace logging for each run
-- Designed to be deliverable within a 3-day hackathon scope
+php artisan boost:install
+```
 
-## Tech Stack
+Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
 
-### Backend
-- Laravel (latest) with Laravel AI SDK
-- Python services (FastAPI) for agent orchestration if needed
+## Contributing
 
-### AI Providers
-- OpenAI, Anthropic, Gemini, Groq, xAI (via unified abstraction)
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
-### Guardrails
-- NVIDIA NeMo Guardrails (primary)
-- LLM Guard (auxiliary filtering)
+## Code of Conduct
 
-### Red-Teaming
-- DeepTeam (batch attack generation and reports)
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-### Evaluation
-- Promptfoo (regression testing, rubric-based evaluation)
+## Security Vulnerabilities
 
-### Observability
-- LangWatch with OpenTelemetry (tracing and experiment tracking)
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
-### Database
-- PostgreSQL or MySQL (scenarios, logs, metrics)
+## License
 
-### Frontend
-- Laravel Blade + React (duel UI and analytics)
-
-### DevOps
-- Docker or Laravel Sail for local development and deployment
-
-## Evaluation Strategy
-- Track per-scenario attack success rate
-- Compare baseline vs. guarded configurations
-- Use a rubric-based evaluation for nuanced safety judgments
-- Maintain reproducible test suites for regression
-
-## Deliverables (for submission)
-
-- This repository (architecture, structure, and initial setup)
-- Presentation (in /docs)
-- Project description (this README)
-- Initial agent stubs and system design
-- GitHub repository serves as the technical backbone of the project, including system architecture, agent design, and initial implementation
-
-Note: The system is designed to be extended into a fully functional implementation, with ongoing development planned for complete agent workflows, integrations, and deployment.
-
-## Value Proposition
-
-- Enables organizations to identify vulnerabilities before deployment
-- Reduces risk of unsafe or non-compliant AI behavior
-- Provides measurable and repeatable safety evaluation workflows
-- Bridges the gap between research-level red-teaming and practical implementation
-
-## Future Work
-- Expanded multi-turn adaptive attacks
-- Multimodal red-teaming (image + text)
-- Advanced analytics and reporting
-- CI/CD integration for continuous safety testing
-
-## Impact
-
-This platform enables:
-- Systematic and repeatable AI safety testing
-- Automated adversarial simulation
-- Measurable evaluation of model robustness
-
-It provides a practical foundation for deploying safer AI systems in real-world environments.
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
