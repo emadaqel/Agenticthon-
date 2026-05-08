@@ -6,7 +6,7 @@
     <title>Red-Team Arena — Enterprise LLM Security Validation Platform</title>
     <meta name="description" content="Automated adversarial AI security testing. Red-team your LLMs, measure guardrail effectiveness, and generate board-ready audit evidence mapped to OWASP LLM Top 10.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --red: #ef4444; --red-dark: #dc2626; --red-glow: rgba(239,68,68,0.35);
@@ -17,6 +17,9 @@
             --panel-2: #0f172a; --border: rgba(255,255,255,0.07);
             --border-light: rgba(255,255,255,0.12);
             --text: #f1f5f9; --muted: #64748b; --muted-2: #94a3b8;
+            --arena-font: 'Orbitron', sans-serif;
+            --red-neon: 0 0 15px var(--red), 0 0 50px rgba(239,68,68,0.25);
+            --blue-neon: 0 0 15px var(--blue), 0 0 50px rgba(59,130,246,0.25);
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
@@ -30,6 +33,27 @@
         .orb-3 { width: 400px; height: 400px; background: var(--orange); top: 45%; left: 35%; animation-delay: -16s; opacity: 0.08; }
         @keyframes orb-float { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,-50px) scale(1.08); } 100% { transform: translate(-30px,35px) scale(0.95); } }
         .grid-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px); background-size: 64px 64px; }
+
+        /* ── Arena Floor (3D perspective grid) ── */
+        .arena-floor { position: absolute; bottom: -10%; left: 50%; transform: translateX(-50%) perspective(600px) rotateX(55deg); width: 140%; height: 350px; background: repeating-linear-gradient(90deg, rgba(239,68,68,0.04) 0px, transparent 1px, transparent 80px), repeating-linear-gradient(0deg, rgba(59,130,246,0.04) 0px, transparent 1px, transparent 80px); border-top: 1px solid rgba(255,255,255,0.05); opacity: 0.6; pointer-events: none; z-index: 0; mask-image: linear-gradient(to top, black 30%, transparent 100%); -webkit-mask-image: linear-gradient(to top, black 30%, transparent 100%); }
+
+        /* ── Fighter animations ── */
+        @keyframes fighter-idle { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6px) scale(1.03); } }
+        @keyframes fighter-glow-red { 0%,100% { box-shadow: 0 8px 40px rgba(239,68,68,.12), 0 0 0 0 rgba(239,68,68,0); } 50% { box-shadow: 0 8px 40px rgba(239,68,68,.25), 0 0 30px 5px rgba(239,68,68,0.08); } }
+        @keyframes fighter-glow-blue { 0%,100% { box-shadow: 0 8px 40px rgba(59,130,246,.12), 0 0 0 0 rgba(59,130,246,0); } 50% { box-shadow: 0 8px 40px rgba(59,130,246,.25), 0 0 30px 5px rgba(59,130,246,0.08); } }
+        @keyframes vs-pulse { 0%,100% { transform: scale(1); text-shadow: 0 0 30px var(--orange-glow); } 50% { transform: scale(1.12); text-shadow: 0 0 50px var(--orange-glow), 0 0 80px rgba(249,115,22,0.3); } }
+        @keyframes energy-line { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
+        @keyframes slam-in { 0% { opacity: 0; transform: scale(2.5) translateY(-20px); } 60% { opacity: 1; transform: scale(0.95); } 100% { transform: scale(1); } }
+        @keyframes particle-rise { 0% { transform: translateY(0) scale(1); opacity: 0.6; } 100% { transform: translateY(-120px) scale(0); opacity: 0; } }
+
+        /* Particles */
+        .particles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+        .particle { position: absolute; width: 3px; height: 3px; border-radius: 50%; animation: particle-rise linear infinite; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .orb, .team, .vs, .particle, .arena-floor { animation: none !important; }
+            .team:hover { transform: none; }
+        }
 
         /* ── Layout ── */
         .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 1; }
@@ -68,26 +92,39 @@
         @keyframes fade-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
 
         /* ── VS Arena ── */
-        .vs-arena { display: flex; align-items: center; justify-content: center; gap: 2.5rem; animation: fade-up .7s ease .4s both; }
-        .team { display: flex; flex-direction: column; align-items: center; gap: .6rem; padding: 1.5rem 2rem; border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); transition: all .3s; cursor: default; }
-        .team:hover { transform: translateY(-5px); }
-        .team-red { border-color: rgba(239,68,68,.3); box-shadow: 0 8px 40px rgba(239,68,68,.12); }
-        .team-blue { border-color: rgba(59,130,246,.3); box-shadow: 0 8px 40px rgba(59,130,246,.12); }
-        .team-icon { font-size: 2.2rem; }
-        .team-name { font-weight: 800; font-size: 1rem; letter-spacing: .06em; }
-        .team-red .team-name { color: var(--red); }
-        .team-blue .team-name { color: var(--blue); }
+        .vs-arena { display: flex; align-items: center; justify-content: center; gap: 3rem; animation: fade-up .7s ease .4s both; position: relative; padding: 2rem 0; }
+        .vs-arena::before { content: ''; position: absolute; top: 50%; left: 10%; right: 10%; height: 2px; background: linear-gradient(90deg, var(--red), transparent 30%, transparent 70%, var(--blue)); opacity: 0.3; transform: translateY(-50%); }
+        .team { display: flex; flex-direction: column; align-items: center; gap: .75rem; padding: 2rem 2.5rem; border-radius: 1.2rem; border: 1px solid var(--border); background: rgba(17,24,39,0.8); backdrop-filter: blur(16px); transition: all .4s; cursor: default; position: relative; overflow: hidden; }
+        .team::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+        .team:hover { transform: translateY(-8px) scale(1.02); }
+        .team-red { border-color: rgba(239,68,68,.3); animation: fighter-glow-red 3s ease-in-out infinite; }
+        .team-red::before { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+        .team-blue { border-color: rgba(59,130,246,.3); animation: fighter-glow-blue 3s ease-in-out infinite; }
+        .team-blue::before { background: linear-gradient(90deg, transparent, var(--blue), transparent); }
+        .team-icon { font-size: 3rem; animation: fighter-idle 3s ease-in-out infinite; filter: drop-shadow(0 0 12px currentColor); }
+        .team-red .team-icon { color: var(--red); }
+        .team-blue .team-icon { color: var(--blue); }
+        .team-name { font-family: var(--arena-font); font-weight: 900; font-size: 1rem; letter-spacing: .12em; text-transform: uppercase; }
+        .team-red .team-name { color: var(--red); text-shadow: 0 0 20px rgba(239,68,68,0.4); }
+        .team-blue .team-name { color: var(--blue); text-shadow: 0 0 20px rgba(59,130,246,0.4); }
         .team-desc { font-size: .72rem; color: var(--muted); }
-        .vs { font-size: 1.8rem; font-weight: 900; color: var(--orange); text-shadow: 0 0 30px var(--orange-glow); }
+        .team-hp { width: 100%; height: 4px; border-radius: 999px; background: rgba(255,255,255,0.08); margin-top: .3rem; overflow: hidden; }
+        .team-hp-fill { height: 100%; border-radius: 999px; transition: width 0.6s ease; }
+        .team-red .team-hp-fill { background: linear-gradient(90deg, var(--red-dark), var(--red)); width: 100%; }
+        .team-blue .team-hp-fill { background: linear-gradient(90deg, var(--blue-dark), var(--blue)); width: 100%; }
+        .vs { font-family: var(--arena-font); font-size: 2.5rem; font-weight: 900; color: var(--orange); animation: vs-pulse 2s ease-in-out infinite; z-index: 1; position: relative; letter-spacing: .1em; }
+        .vs::after { content: ''; position: absolute; inset: -15px; border-radius: 50%; background: radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%); z-index: -1; }
 
         /* ── Metrics strip ── */
-        .metrics-strip { padding: 3.5rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: linear-gradient(180deg, transparent, rgba(59,130,246,.03), transparent); }
+        .metrics-strip { padding: 3.5rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: linear-gradient(180deg, transparent, rgba(59,130,246,.03), transparent); position: relative; }
+        .metrics-strip::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--red), var(--orange), var(--blue), transparent); animation: energy-line 4s linear infinite; background-size: 200% 100%; }
         .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
         @media(max-width:768px) { .metrics-grid { grid-template-columns: repeat(2,1fr); } }
-        .metric { text-align: center; padding: 1.5rem; border-right: 1px solid var(--border); }
+        .metric { text-align: center; padding: 1.5rem; border-right: 1px solid var(--border); transition: all 0.3s; }
+        .metric:hover { background: rgba(255,255,255,0.02); }
         .metric:last-child { border-right: none; }
-        .metric-val { font-size: 2.8rem; font-weight: 900; letter-spacing: -.04em; background: linear-gradient(135deg, var(--text), var(--muted-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .metric-lbl { font-size: .75rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-top: .25rem; }
+        .metric-val { font-family: var(--arena-font); font-size: 2.4rem; font-weight: 900; letter-spacing: -.02em; background: linear-gradient(135deg, var(--text), var(--muted-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .metric-lbl { font-family: var(--arena-font); font-size: .6rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin-top: .35rem; }
 
         /* ── Section commons ── */
         .section { padding: 7rem 0; }
@@ -95,21 +132,23 @@
         .section-title { font-size: clamp(1.8rem,3.5vw,2.6rem); font-weight: 800; letter-spacing: -.03em; margin-bottom: .75rem; line-height: 1.2; }
         .section-sub { color: var(--muted-2); font-size: 1rem; max-width: 560px; line-height: 1.8; }
 
-        /* ── Feature cards ── */
+        /* ── Feature cards ("Fighter Moves") ── */
         .features-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; margin-top: 3.5rem; }
         @media(max-width:900px) { .features-grid { grid-template-columns: repeat(2,1fr); } }
         @media(max-width:600px) { .features-grid { grid-template-columns: 1fr; } }
-        .feat { background: var(--panel); border: 1px solid var(--border); border-radius: .85rem; padding: 1.75rem; position: relative; overflow: hidden; transition: all .3s; }
-        .feat::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--red), var(--orange), transparent); opacity: 0; transition: opacity .3s; }
-        .feat:hover { transform: translateY(-5px); border-color: var(--border-light); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
-        .feat:hover::after { opacity: 1; }
-        .feat-icon { width: 2.8rem; height: 2.8rem; border-radius: .6rem; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 1rem; }
-        .feat-icon-red { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.2); }
-        .feat-icon-blue { background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.2); }
-        .feat-icon-orange { background: rgba(249,115,22,.12); border: 1px solid rgba(249,115,22,.2); }
-        .feat-icon-green { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.2); }
-        .feat-icon-purple { background: rgba(168,85,247,.12); border: 1px solid rgba(168,85,247,.2); }
-        .feat-icon-cyan { background: rgba(6,182,212,.12); border: 1px solid rgba(6,182,212,.2); }
+        .feat { background: rgba(17,24,39,0.7); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: .85rem; padding: 1.75rem; position: relative; overflow: hidden; transition: all .4s cubic-bezier(.25,.46,.45,.94); cursor: pointer; }
+        .feat::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.06) 0%, transparent 70%); opacity: 0; transition: opacity .4s; }
+        .feat::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--red), var(--orange), transparent); opacity: 0; transition: opacity .3s; }
+        .feat:hover { transform: translateY(-8px) scale(1.02); border-color: rgba(255,255,255,0.15); box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 30px rgba(239,68,68,0.05); }
+        .feat:hover::before, .feat:hover::after { opacity: 1; }
+        .feat-icon { width: 3rem; height: 3rem; border-radius: .7rem; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 1rem; transition: transform .3s, box-shadow .3s; }
+        .feat:hover .feat-icon { transform: scale(1.1); }
+        .feat-icon-red { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.25); box-shadow: 0 0 15px rgba(239,68,68,0.1); }
+        .feat-icon-blue { background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.25); box-shadow: 0 0 15px rgba(59,130,246,0.1); }
+        .feat-icon-orange { background: rgba(249,115,22,.12); border: 1px solid rgba(249,115,22,.25); box-shadow: 0 0 15px rgba(249,115,22,0.1); }
+        .feat-icon-green { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.25); box-shadow: 0 0 15px rgba(34,197,94,0.1); }
+        .feat-icon-purple { background: rgba(168,85,247,.12); border: 1px solid rgba(168,85,247,.25); box-shadow: 0 0 15px rgba(168,85,247,0.1); }
+        .feat-icon-cyan { background: rgba(6,182,212,.12); border: 1px solid rgba(6,182,212,.25); box-shadow: 0 0 15px rgba(6,182,212,0.1); }
         .feat-title { font-weight: 700; font-size: .95rem; margin-bottom: .4rem; }
         .feat-desc { font-size: .82rem; color: var(--muted); line-height: 1.7; }
 
@@ -152,7 +191,8 @@
         .int-dot { width: .5rem; height: .5rem; border-radius: 50%; }
 
         /* ── CTA ── */
-        .cta-section { padding: 7rem 0; text-align: center; background: linear-gradient(180deg, transparent, rgba(239,68,68,.04), transparent); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .cta-section { padding: 7rem 0; text-align: center; background: linear-gradient(180deg, transparent, rgba(239,68,68,.04), transparent); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+        .cta-section::before { content: ''; position: absolute; top: 50%; left: 50%; width: 400px; height: 400px; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 70%); animation: vs-pulse 4s ease-in-out infinite; pointer-events: none; }
         .cta-title { font-size: clamp(2rem,4vw,3rem); font-weight: 900; letter-spacing: -.04em; margin-bottom: 1rem; }
         .cta-sub { color: var(--muted-2); font-size: 1rem; margin-bottom: 2.5rem; }
 
@@ -216,10 +256,12 @@
 </nav>
 
 <!-- Hero -->
-<section class="hero">
+<section class="hero" style="position:relative;overflow:hidden;">
+    <div class="arena-floor"></div>
+    <div class="particles" id="hero-particles"></div>
     <div class="hero-eyebrow">
         <span class="pulse"></span>
-        Now in General Availability — Enterprise AI Security
+        ARENA ONLINE — Enterprise AI Security
     </div>
     <h1 class="hero-title">
         Prove your AI is<br>
@@ -230,7 +272,7 @@
         Test every LLM deployment against real adversarial threats before they reach production.
     </p>
     <div class="hero-actions">
-        <a href="/duels" class="btn-primary">Launch Security Console →</a>
+        <a href="/duels" class="btn-primary" style="font-family:var(--arena-font);letter-spacing:.08em;">⚔ ENTER THE ARENA</a>
         <a href="#platform" class="btn-secondary">Explore Platform</a>
     </div>
 
@@ -239,12 +281,14 @@
             <div class="team-icon">🗡️</div>
             <div class="team-name">RED TEAM</div>
             <div class="team-desc">Adaptive adversarial AI</div>
+            <div class="team-hp"><div class="team-hp-fill"></div></div>
         </div>
         <div class="vs">VS</div>
         <div class="team team-blue">
             <div class="team-icon">🛡️</div>
             <div class="team-name">BLUE TEAM</div>
             <div class="team-desc">Guardrails & policy enforcement</div>
+            <div class="team-hp"><div class="team-hp-fill"></div></div>
         </div>
     </div>
 </section>
@@ -473,9 +517,9 @@
 <!-- CTA -->
 <section class="cta-section">
     <div class="container">
-        <h2 class="cta-title">Your AI is in production.<br>Is it secure?</h2>
+        <h2 class="cta-title">Your AI is in production.<br><span class="grad-fire">Is it secure?</span></h2>
         <p class="cta-sub">Launch a full adversarial assessment in under 60 seconds. No configuration required.</p>
-        <a href="/duels" class="btn-primary" style="font-size:1.05rem;padding:.9rem 3rem;">Open Security Console →</a>
+        <a href="/duels" class="btn-primary" style="font-family:var(--arena-font);font-size:1.05rem;padding:.9rem 3rem;letter-spacing:.08em;">⚔ ENTER THE ARENA</a>
     </div>
 </section>
 
@@ -522,5 +566,26 @@
     </div>
 </footer>
 
+<script>
+// Spawn floating energy particles in the hero
+(function(){
+    const c = document.getElementById('hero-particles');
+    if (!c || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const colors = ['rgba(239,68,68,0.6)','rgba(59,130,246,0.6)','rgba(249,115,22,0.5)'];
+    for (let i = 0; i < 18; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random()*100+'%';
+        p.style.bottom = Math.random()*20+'%';
+        p.style.background = colors[i%3];
+        p.style.animationDuration = (5+Math.random()*8)+'s';
+        p.style.animationDelay = (Math.random()*5)+'s';
+        p.style.width = (2+Math.random()*3)+'px';
+        p.style.height = p.style.width;
+        p.style.boxShadow = '0 0 6px '+colors[i%3];
+        c.appendChild(p);
+    }
+})();
+</script>
 </body>
 </html>

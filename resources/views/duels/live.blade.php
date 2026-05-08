@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Duel — Red-Team Arena</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         :root{
@@ -14,6 +14,7 @@
             --red:#ef4444; --red-d:#dc2626; --orange:#f97316; --blue:#3b82f6;
             --green:#22c55e; --yellow:#eab308; --purple:#a855f7; --cyan:#06b6d4;
             --mono:'JetBrains Mono',monospace;
+            --arena-font:'Orbitron',sans-serif;
         }
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         html{font-size:14px;scroll-behavior:smooth;}
@@ -49,6 +50,41 @@
         .status-complete{color:#86efac;font-size:.72rem;font-weight:700;}
         .status-idle{color:var(--muted2);font-size:.72rem;font-weight:700;}
 
+        /* Arena bg */
+        .arena-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;}
+        .arena-bg::before{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%) perspective(500px) rotateX(55deg);width:150%;height:300px;background:repeating-linear-gradient(90deg,rgba(239,68,68,.03) 0px,transparent 1px,transparent 80px),repeating-linear-gradient(0deg,rgba(59,130,246,.03) 0px,transparent 1px,transparent 80px);opacity:.5;mask-image:linear-gradient(to top,black 20%,transparent);-webkit-mask-image:linear-gradient(to top,black 20%,transparent);}
+        .arena-bg::after{content:'';position:absolute;top:10%;left:-5%;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(239,68,68,.06),transparent 70%);filter:blur(80px);}
+
+        /* Fighter HUD */
+        .fighter-hud{display:flex;align-items:center;justify-content:center;gap:2rem;padding:1.5rem;}
+        .fighter-side{display:flex;align-items:center;gap:.75rem;flex:1;}
+        .fighter-side.blue{flex-direction:row-reverse;text-align:right;}
+        .fighter-avatar{width:3rem;height:3rem;border-radius:.6rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;}
+        .fighter-avatar.red{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);box-shadow:0 0 15px rgba(239,68,68,.15);}
+        .fighter-avatar.blue{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);box-shadow:0 0 15px rgba(59,130,246,.15);}
+        .fighter-info{flex:1;min-width:0;}
+        .fighter-name{font-family:var(--arena-font);font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;}
+        .fighter-name.red{color:#fca5a5;}
+        .fighter-name.blue{color:#93c5fd;}
+        .hp-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:.3rem;}
+        .hp-fill{height:100%;border-radius:99px;transition:width .6s ease;}
+        .hp-fill.red{background:linear-gradient(90deg,#dc2626,#ef4444);}
+        .hp-fill.blue{background:linear-gradient(90deg,#1d4ed8,#3b82f6);}
+        .vs-badge{font-family:var(--arena-font);font-size:1.2rem;font-weight:900;color:var(--orange);text-shadow:0 0 20px rgba(249,115,22,.4);flex-shrink:0;}
+
+        /* Round announce */
+        @keyframes roundSlam{0%{opacity:0;transform:scale(3);}50%{opacity:1;transform:scale(.95);}100%{transform:scale(1);}}
+        .round-announce{text-align:center;padding:.5rem 0;}
+        .round-announce span{font-family:var(--arena-font);font-size:1rem;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:var(--orange);text-shadow:0 0 25px rgba(249,115,22,.4);animation:roundSlam .5s ease both;}
+
+        @keyframes fighter-idle{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+        @keyframes energy-line{0%{background-position:200% center;}100%{background-position:-200% center;}}
+        @keyframes particle-rise{0%{transform:translateY(0) scale(1);opacity:.5;}100%{transform:translateY(-100px) scale(0);opacity:0;}}
+        .particles{position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden;}
+        .particle{position:absolute;width:3px;height:3px;border-radius:50%;animation:particle-rise linear infinite;}
+
+        @media(prefers-reduced-motion:reduce){.arena-bg::before,.particle,.round-announce span{animation:none!important;}}
+
         a.back-link{color:var(--muted2);font-size:.72rem;text-decoration:none;border:1px solid var(--border2);
             padding:.28rem .7rem;border-radius:.3rem;transition:all .2s;}
         a.back-link:hover{color:var(--text);background:rgba(255,255,255,.06);}
@@ -62,7 +98,7 @@
             padding:1.25rem 1.5rem;margin-bottom:1.5rem;
             display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center;
         }
-        .progress-title{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.35rem;}
+        .progress-title{font-family:var(--arena-font);font-size:1rem;font-weight:900;letter-spacing:.05em;margin-bottom:.35rem;}
         .progress-sub{font-size:.72rem;color:var(--muted2);}
         .progress-sub span{color:var(--text);font-weight:600;}
         .progress-bar-wrap{background:rgba(255,255,255,.05);border-radius:999px;height:.35rem;margin-top:.75rem;overflow:hidden;}
@@ -70,7 +106,7 @@
 
         .score-grid{display:flex;gap:1.25rem;}
         .score-card{text-align:center;}
-        .score-val{font-size:1.6rem;font-weight:800;font-family:var(--mono);line-height:1;}
+        .score-val{font-size:1.8rem;font-weight:900;font-family:var(--arena-font);line-height:1;}
         .score-val.red{color:var(--red);}
         .score-val.blue{color:var(--blue);}
         .score-val.muted{color:var(--muted2);}
@@ -100,7 +136,10 @@
             overflow:hidden;
             animation:slideIn .4s ease forwards;
             opacity:0;transform:translateY(16px);
+            border-left:3px solid transparent;
         }
+        .turn-card.red-win{border-left-color:var(--red);}
+        .turn-card.blue-win{border-left-color:var(--blue);}
         @keyframes slideIn{to{opacity:1;transform:translateY(0);}}
 
         .turn-header{
@@ -211,7 +250,7 @@
             padding:1.5rem;margin-top:1.5rem;
             animation:slideIn .5s ease forwards;opacity:0;
         }
-        .summary-title{font-size:1rem;font-weight:800;margin-bottom:1rem;
+        .summary-title{font-family:var(--arena-font);font-size:1.1rem;font-weight:900;letter-spacing:.08em;margin-bottom:1rem;
             background:linear-gradient(135deg,var(--blue),var(--purple));
             -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
         .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem;margin-bottom:1rem;}
@@ -249,6 +288,9 @@
     </style>
 </head>
 <body x-data="liveApp()" x-init="init()">
+
+<div class="arena-bg"></div>
+<div class="particles" id="live-particles"></div>
 
 <!-- ── Top Bar ── -->
 <div class="topbar">
@@ -314,6 +356,25 @@
         </div>
     </div>
 
+    <!-- Fighter HUD -->
+    <div class="fighter-hud" x-show="status !== 'not_found'">
+        <div class="fighter-side red">
+            <div class="fighter-avatar red" style="animation:fighter-idle 3s ease infinite;">🔴</div>
+            <div class="fighter-info">
+                <div class="fighter-name red">ATTACKER</div>
+                <div class="hp-bar"><div class="hp-fill red" :style="`width:${redHpPct}%`"></div></div>
+            </div>
+        </div>
+        <div class="vs-badge">VS</div>
+        <div class="fighter-side blue">
+            <div class="fighter-avatar blue" style="animation:fighter-idle 3s ease infinite;animation-delay:.5s;">🔵</div>
+            <div class="fighter-info">
+                <div class="fighter-name blue">DEFENDER</div>
+                <div class="hp-bar"><div class="hp-fill blue" :style="`width:${blueHpPct}%`"></div></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Waiting spinner (before first turn arrives) -->
     <div class="waiting-box" x-show="status==='waiting' || (status==='running' && turns.length===0)">
         <div class="waiting-spinner"></div>
@@ -321,10 +382,15 @@
         <div class="waiting-sub">Attacker Agent is crafting the first adversarial prompt via Groq AI</div>
     </div>
 
+    <!-- Round Announce -->
+    <template x-if="status==='running' && turns.length > 0">
+        <div class="round-announce"><span x-text="'ROUND ' + turns.length + ' COMPLETE'"></span></div>
+    </template>
+
     <!-- Live turns feed -->
     <div class="turns-feed">
         <template x-for="(turn, idx) in turns" :key="turn.turn">
-            <div class="turn-card">
+            <div class="turn-card" :class="{'red-win':turn.judge_outcome==='red_team_win','blue-win':turn.judge_outcome==='blue_team_win'}">
                 <!-- Turn header -->
                 <div class="turn-header">
                     <div class="turn-num" x-text="'T' + turn.turn"></div>
@@ -494,7 +560,7 @@
     <!-- Summary card (shown when complete) -->
     <template x-if="summary && status === 'complete'">
         <div class="summary-card">
-            <div class="summary-title">⚔ Duel Summary</div>
+            <div class="summary-title">⚔ MATCH COMPLETE</div>
             <div class="summary-grid">
                 <div class="summary-stat">
                     <div class="summary-stat-val" style="color:var(--red)" x-text="summary.red_team_wins">0</div>
@@ -561,6 +627,16 @@ function liveApp() {
 
         get redWins()  { return this.turns.filter(t => t.judge_outcome === 'red_team_win').length; },
         get blueWins() { return this.turns.filter(t => t.judge_outcome === 'blue_team_win').length; },
+        get redHpPct() {
+            if (this.turns.length === 0) return 100;
+            const redLosses = this.turns.filter(t => t.judge_outcome === 'blue_team_win').length;
+            return Math.max(5, 100 - (redLosses / Math.max(1, this.turns.length)) * 100);
+        },
+        get blueHpPct() {
+            if (this.turns.length === 0) return 100;
+            const blueLosses = this.turns.filter(t => t.judge_outcome === 'red_team_win').length;
+            return Math.max(5, 100 - (blueLosses / Math.max(1, this.turns.length)) * 100);
+        },
         get progressPct() {
             if (this.status === 'complete') return 100;
             if (!this.summary) return this.turns.length > 0 ? Math.min(90, this.turns.length * 25) : 5;
@@ -635,6 +711,14 @@ function liveApp() {
         },
     };
 }
+</script>
+<script>
+(function(){
+    const c=document.getElementById('live-particles');
+    if(!c||window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    const cols=['rgba(239,68,68,.5)','rgba(59,130,246,.5)','rgba(249,115,22,.4)'];
+    for(let i=0;i<14;i++){const p=document.createElement('div');p.className='particle';p.style.left=Math.random()*100+'%';p.style.bottom=Math.random()*15+'%';p.style.background=cols[i%3];p.style.animationDuration=(6+Math.random()*8)+'s';p.style.animationDelay=Math.random()*5+'s';p.style.width=(2+Math.random()*2)+'px';p.style.height=p.style.width;p.style.boxShadow='0 0 5px '+cols[i%3];c.appendChild(p);}
+})();
 </script>
 </body>
 </html>
