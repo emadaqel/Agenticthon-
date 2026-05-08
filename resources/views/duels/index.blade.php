@@ -599,29 +599,16 @@
                         <div class="round-announce"><span x-text="'ROUND ' + turns.length + (liveThinking ? ' — NEXT ROUND LOADING' : ' COMPLETE')"></span></div>
                     </template>
 
-                    <div class="kpi-strip">
-                        <div class="kpi"><div class="lbl">Coverage</div><div class="val" style="color:var(--blue);font-size:.85rem;">OWASP LLM</div></div>
-                        <div class="kpi"><div class="lbl">Mode</div><div class="val" style="font-size:.85rem;">Red vs Blue</div></div>
-                        <div class="kpi"><div class="lbl">Guardrails</div><div class="val" style="font-size:.85rem;">2 Engines</div></div>
-                        <div class="kpi"><div class="lbl">Evidence</div><div class="val" style="color:var(--green);font-size:.85rem;">Audit Trail</div></div>
-                    </div>
-
                     <template x-if="activeId">
-                        <div class="sel-panel">
-                            <div>
-                                <h3 x-text="activeCat.replace(/_/g,' ')+' — readiness assessment'"></h3>
-                                <p x-text="activeDesc"></p>
-                                <div class="sc-chips" style="margin-top:.55rem;">
-                                    <span class="chip" x-text="activeSev+' severity'"></span>
-                                    <template x-for="p in activePats" :key="p">
-                                        <span class="chip" x-text="p.replace(/_/g,' ')"></span>
-                                    </template>
-                                </div>
+                        <div class="sel-panel" style="flex-direction:column;align-items:stretch;">
+                            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+                                <span style="font-family:var(--arena-font);font-weight:900;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;" x-text="activeCat.replace(/_/g,' ')"></span>
+                                <span class="chip" x-text="activeSev+' severity'"></span>
+                                <template x-for="p in activePats" :key="p">
+                                    <span class="chip" x-text="p.replace(/_/g,' ')"></span>
+                                </template>
                             </div>
-                            <button class="btn-run" @click="runDuel()" :disabled="running">
-                                <span x-show="!running">▶ Run</span>
-                                <span x-show="running"><span class="spin"></span></span>
-                            </button>
+                            <div style="font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:.3rem;" x-text="activeDesc"></div>
                         </div>
                     </template>
 

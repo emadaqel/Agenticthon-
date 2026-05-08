@@ -55,27 +55,33 @@
         .arena-bg::before{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%) perspective(500px) rotateX(55deg);width:150%;height:300px;background:repeating-linear-gradient(90deg,rgba(239,68,68,.03) 0px,transparent 1px,transparent 80px),repeating-linear-gradient(0deg,rgba(59,130,246,.03) 0px,transparent 1px,transparent 80px);opacity:.5;mask-image:linear-gradient(to top,black 20%,transparent);-webkit-mask-image:linear-gradient(to top,black 20%,transparent);}
         .arena-bg::after{content:'';position:absolute;top:10%;left:-5%;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(239,68,68,.06),transparent 70%);filter:blur(80px);}
 
-        /* Fighter HUD */
-        .fighter-hud{display:flex;align-items:center;justify-content:center;gap:2rem;padding:1.5rem;}
-        .fighter-side{display:flex;align-items:center;gap:.75rem;flex:1;}
+        /* Unified Combat HUD */
+        .combat-hud{background:var(--surface);border:1px solid var(--border);border-radius:.75rem;padding:1rem 1.5rem;margin-bottom:1.25rem;}
+        .combat-hud-top{display:flex;align-items:center;justify-content:center;gap:1.5rem;}
+        .fighter-side{display:flex;align-items:center;gap:.65rem;flex:1;}
         .fighter-side.blue{flex-direction:row-reverse;text-align:right;}
-        .fighter-avatar{width:3rem;height:3rem;border-radius:.6rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;}
-        .fighter-avatar.red{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);box-shadow:0 0 15px rgba(239,68,68,.15);}
-        .fighter-avatar.blue{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);box-shadow:0 0 15px rgba(59,130,246,.15);}
+        .fighter-avatar{width:2.5rem;height:2.5rem;border-radius:.5rem;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+        .fighter-avatar.red{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);box-shadow:0 0 12px rgba(239,68,68,.12);}
+        .fighter-avatar.blue{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);box-shadow:0 0 12px rgba(59,130,246,.12);}
         .fighter-info{flex:1;min-width:0;}
-        .fighter-name{font-family:var(--arena-font);font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;}
+        .fighter-name{font-family:var(--arena-font);font-size:.6rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;}
         .fighter-name.red{color:#fca5a5;}
         .fighter-name.blue{color:#93c5fd;}
-        .hp-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:.3rem;}
+        .fighter-wins{font-size:.65rem;color:var(--muted2);font-weight:700;margin-top:.15rem;}
+        .hp-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:.25rem;}
         .hp-fill{height:100%;border-radius:99px;transition:width .6s ease;}
         .hp-fill.red{background:linear-gradient(90deg,#dc2626,#ef4444);}
         .hp-fill.blue{background:linear-gradient(90deg,#1d4ed8,#3b82f6);}
-        .vs-badge{font-family:var(--arena-font);font-size:1.2rem;font-weight:900;color:var(--orange);text-shadow:0 0 20px rgba(249,115,22,.4);flex-shrink:0;}
+        .vs-badge{font-family:var(--arena-font);font-size:1rem;font-weight:900;color:var(--orange);text-shadow:0 0 18px rgba(249,115,22,.35);flex-shrink:0;}
+        .combat-progress{margin-top:.6rem;}
+        .combat-progress-bar{height:3px;border-radius:99px;background:rgba(255,255,255,.05);overflow:hidden;}
+        .combat-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),var(--purple));transition:width .5s ease;}
+        .combat-status{display:flex;align-items:center;justify-content:space-between;margin-top:.3rem;font-size:.62rem;color:var(--muted);}
 
         /* Round announce */
         @keyframes roundSlam{0%{opacity:0;transform:scale(3);}50%{opacity:1;transform:scale(.95);}100%{transform:scale(1);}}
-        .round-announce{text-align:center;padding:.5rem 0;}
-        .round-announce span{font-family:var(--arena-font);font-size:1rem;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:var(--orange);text-shadow:0 0 25px rgba(249,115,22,.4);animation:roundSlam .5s ease both;}
+        .round-announce{text-align:center;padding:.35rem 0;}
+        .round-announce span{font-family:var(--arena-font);font-size:.85rem;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:var(--orange);text-shadow:0 0 20px rgba(249,115,22,.35);animation:roundSlam .5s ease both;}
 
         @keyframes fighter-idle{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
         @keyframes energy-line{0%{background-position:200% center;}100%{background-position:-200% center;}}
@@ -90,27 +96,7 @@
         a.back-link:hover{color:var(--text);background:rgba(255,255,255,.06);}
 
         /* ── Main layout ── */
-        .main{max-width:1200px;margin:0 auto;padding:1.5rem;}
-
-        /* ── Progress header ── */
-        .progress-header{
-            background:var(--surface);border:1px solid var(--border);border-radius:.75rem;
-            padding:1.25rem 1.5rem;margin-bottom:1.5rem;
-            display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center;
-        }
-        .progress-title{font-family:var(--arena-font);font-size:1rem;font-weight:900;letter-spacing:.05em;margin-bottom:.35rem;}
-        .progress-sub{font-size:.72rem;color:var(--muted2);}
-        .progress-sub span{color:var(--text);font-weight:600;}
-        .progress-bar-wrap{background:rgba(255,255,255,.05);border-radius:999px;height:.35rem;margin-top:.75rem;overflow:hidden;}
-        .progress-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--purple));transition:width .5s ease;}
-
-        .score-grid{display:flex;gap:1.25rem;}
-        .score-card{text-align:center;}
-        .score-val{font-size:1.8rem;font-weight:900;font-family:var(--arena-font);line-height:1;}
-        .score-val.red{color:var(--red);}
-        .score-val.blue{color:var(--blue);}
-        .score-val.muted{color:var(--muted2);}
-        .score-label{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:.2rem;}
+        .main{max-width:1100px;margin:0 auto;padding:1.25rem;}
 
         /* ── Waiting state ── */
         .waiting-box{
@@ -129,13 +115,12 @@
         @keyframes dots{0%,20%{content:''}21%,40%{content:'.'}41%,60%{content:'..'}61%,80%,100%{content:'...'}}
 
         /* ── Turn cards ── */
-        .turns-feed{display:flex;flex-direction:column;gap:1.25rem;}
+        .turns-feed{display:flex;flex-direction:column;gap:1rem;}
 
         .turn-card{
             background:var(--surface);border:1px solid var(--border);border-radius:.75rem;
-            overflow:hidden;
-            animation:slideIn .4s ease forwards;
-            opacity:0;transform:translateY(16px);
+            overflow:hidden;animation:slideIn .4s ease forwards;
+            opacity:0;transform:translateY(12px);
             border-left:3px solid transparent;
         }
         .turn-card.red-win{border-left-color:var(--red);}
@@ -143,64 +128,42 @@
         @keyframes slideIn{to{opacity:1;transform:translateY(0);}}
 
         .turn-header{
-            padding:.65rem 1rem;display:flex;align-items:center;gap:.75rem;
+            padding:.5rem .85rem;display:flex;align-items:center;gap:.6rem;
             border-bottom:1px solid var(--border);background:rgba(0,0,0,.2);
         }
         .turn-num{
-            width:1.8rem;height:1.8rem;border-radius:.35rem;
+            width:1.6rem;height:1.6rem;border-radius:.3rem;
             background:rgba(255,255,255,.07);border:1px solid var(--border2);
-            font-size:.7rem;font-weight:800;font-family:var(--mono);
+            font-size:.65rem;font-weight:800;font-family:var(--mono);
             display:flex;align-items:center;justify-content:center;flex-shrink:0;
         }
-        .turn-title{font-weight:700;font-size:.78rem;flex:1;}
-        .turn-time{font-size:.62rem;color:var(--muted);font-family:var(--mono);}
+        .turn-title{font-weight:700;font-size:.72rem;flex:1;}
+        .turn-time{font-size:.6rem;color:var(--muted);font-family:var(--mono);}
 
-        .outcome-badge{padding:.2rem .6rem;border-radius:.3rem;font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+        .outcome-badge{padding:.18rem .55rem;border-radius:.3rem;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
         .outcome-red_team_win{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3);}
         .outcome-blue_team_win{background:rgba(59,130,246,.15);color:#93c5fd;border:1px solid rgba(59,130,246,.3);}
         .outcome-draw{background:rgba(234,179,8,.1);color:#fde047;border:1px solid rgba(234,179,8,.25);}
         .outcome-false_positive{background:rgba(168,85,247,.1);color:#c084fc;border:1px solid rgba(168,85,247,.25);}
 
-        /* ── Turn body rows ── */
-        .turn-body{display:flex;flex-direction:column;}
+        /* ── Combat exchange (2-column) ── */
+        .combat-exchange{display:grid;grid-template-columns:1fr 1fr;}
+        .combat-col{padding:.75rem .85rem;}
+        .combat-col:first-child{border-right:1px solid var(--border);}
+        .combat-col-label{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem;display:flex;align-items:center;gap:.35rem;}
+        .combat-col-label.red{color:#fca5a5;}
+        .combat-col-label.blue{color:#a78bfa;}
+        .technique-tag{font-size:.58rem;color:var(--muted2);font-family:var(--mono);background:rgba(255,255,255,.05);padding:.12rem .4rem;border-radius:.2rem;border:1px solid var(--border);margin-bottom:.35rem;display:inline-block;}
+        .prompt-text{font-family:var(--mono);font-size:.72rem;color:var(--text);line-height:1.6;word-break:break-word;max-height:120px;overflow-y:auto;}
+        .verdict-inline{display:flex;align-items:center;gap:.4rem;margin-bottom:.3rem;}
 
-        .agent-row{
-            display:grid;grid-template-columns:180px 1fr;
-            border-bottom:1px solid var(--border);
-        }
-        .agent-row:last-child{border-bottom:none;}
-
-        .agent-label{
-            padding:.85rem 1rem;
-            display:flex;flex-direction:column;justify-content:flex-start;gap:.35rem;
-            border-right:1px solid var(--border);background:rgba(0,0,0,.15);
-            min-width:0;
-        }
-        .agent-name{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;}
-        .agent-name.attacker{color:#fca5a5;}
-        .agent-name.model{color:#93c5fd;}
-        .agent-name.guardrail{color:#d9f99d;}
-        .agent-name.defender{color:#a78bfa;}
-        .agent-name.judge{color:#fde047;}
-        .agent-icon{font-size:1.1rem;}
-        .technique-tag{font-size:.6rem;color:var(--muted2);font-family:var(--mono);
-            background:rgba(255,255,255,.05);padding:.15rem .4rem;border-radius:.25rem;
-            border:1px solid var(--border);word-break:break-all;}
-
-        .agent-content{
-            padding:.85rem 1rem;font-size:.78rem;line-height:1.7;color:var(--muted2);
-        }
-        .agent-content .prompt-text{
-            font-family:var(--mono);font-size:.73rem;color:var(--text);
-            background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);
-            padding:.6rem .8rem;border-radius:.4rem;line-height:1.65;word-break:break-word;
-        }
-        .agent-content .response-text{
-            font-size:.78rem;color:var(--text);line-height:1.7;word-break:break-word;
-        }
-        .agent-content .verdict-text{
-            font-family:var(--mono);font-size:.73rem;line-height:1.6;word-break:break-word;
-        }
+        /* ── Details strip (compact) ── */
+        .details-strip{padding:.5rem .85rem;background:rgba(0,0,0,.15);border-top:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;font-size:.65rem;color:var(--muted2);}
+        .details-strip .detail-item{display:flex;align-items:center;gap:.25rem;}
+        .details-strip .detail-label{color:var(--muted);font-weight:600;}
+        .detail-expand{background:none;border:1px solid var(--border);color:var(--muted2);padding:.15rem .45rem;border-radius:.25rem;font-size:.6rem;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;}
+        .detail-expand:hover{background:rgba(255,255,255,.05);color:var(--text);}
+        .reasoning-panel{padding:.6rem .85rem;background:rgba(0,0,0,.1);border-top:1px solid var(--border);font-size:.7rem;color:var(--muted2);line-height:1.6;}
 
         /* guardrail scan badges */
         .scan-row{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;}
@@ -325,57 +288,39 @@
         <div class="error-box" x-text="error"></div>
     </template>
 
-    <!-- Progress header -->
-    <div class="progress-header" x-show="status !== 'not_found'">
-        <div>
-            <div class="progress-title">
-                <span x-show="status==='running'">⚔ Duel in Progress<span class="thinking-dots"></span></span>
-                <span x-show="status==='complete'">✅ Duel Complete</span>
-                <span x-show="status==='waiting'">⏳ Queued — waiting for worker</span>
+    <!-- Unified Combat HUD -->
+    <div class="combat-hud" x-show="status !== 'not_found'">
+        <div class="combat-hud-top">
+            <div class="fighter-side">
+                <div class="fighter-avatar red" style="animation:fighter-idle 3s ease infinite;">🔴</div>
+                <div class="fighter-info">
+                    <div class="fighter-name red">ATTACKER</div>
+                    <div class="fighter-wins">Wins: <span x-text="redWins">0</span></div>
+                    <div class="hp-bar"><div class="hp-fill red" :style="`width:${redHpPct}%`"></div></div>
+                </div>
             </div>
-            <div class="progress-sub">
-                Duel ID: <span x-text="duelId"></span>
-            </div>
-            <div class="progress-bar-wrap">
-                <div class="progress-bar" :style="`width:${progressPct}%`"></div>
-            </div>
-        </div>
-        <div class="score-grid">
-            <div class="score-card">
-                <div class="score-val red" x-text="redWins">0</div>
-                <div class="score-label">🔴 Red</div>
-            </div>
-            <div class="score-card">
-                <div class="score-val muted">vs</div>
-                <div class="score-label">&nbsp;</div>
-            </div>
-            <div class="score-card">
-                <div class="score-val blue" x-text="blueWins">0</div>
-                <div class="score-label">🔵 Blue</div>
+            <div class="vs-badge">VS</div>
+            <div class="fighter-side blue">
+                <div class="fighter-avatar blue" style="animation:fighter-idle 3s ease infinite;animation-delay:.5s;">🔵</div>
+                <div class="fighter-info">
+                    <div class="fighter-name blue">DEFENDER</div>
+                    <div class="fighter-wins">Wins: <span x-text="blueWins">0</span></div>
+                    <div class="hp-bar"><div class="hp-fill blue" :style="`width:${blueHpPct}%`"></div></div>
+                </div>
             </div>
         </div>
-    </div>
-
-    <!-- Fighter HUD -->
-    <div class="fighter-hud" x-show="status !== 'not_found'">
-        <div class="fighter-side red">
-            <div class="fighter-avatar red" style="animation:fighter-idle 3s ease infinite;">🔴</div>
-            <div class="fighter-info">
-                <div class="fighter-name red">ATTACKER</div>
-                <div class="hp-bar"><div class="hp-fill red" :style="`width:${redHpPct}%`"></div></div>
-            </div>
-        </div>
-        <div class="vs-badge">VS</div>
-        <div class="fighter-side blue">
-            <div class="fighter-avatar blue" style="animation:fighter-idle 3s ease infinite;animation-delay:.5s;">🔵</div>
-            <div class="fighter-info">
-                <div class="fighter-name blue">DEFENDER</div>
-                <div class="hp-bar"><div class="hp-fill blue" :style="`width:${blueHpPct}%`"></div></div>
+        <div class="combat-progress">
+            <div class="combat-progress-bar"><div class="combat-progress-fill" :style="`width:${progressPct}%`"></div></div>
+            <div class="combat-status">
+                <span x-show="status==='running'">⚔ Fighting<span class="thinking-dots"></span></span>
+                <span x-show="status==='complete'">✅ Complete</span>
+                <span x-show="status==='waiting'">⏳ Queued</span>
+                <span x-text="'Duel ' + duelId"></span>
             </div>
         </div>
     </div>
 
-    <!-- Waiting spinner (before first turn arrives) -->
+    <!-- Waiting spinner -->
     <div class="waiting-box" x-show="status==='waiting' || (status==='running' && turns.length===0)">
         <div class="waiting-spinner"></div>
         <div class="waiting-title">Agents Initialising<span class="thinking-dots"></span></div>
@@ -395,163 +340,83 @@
                 <div class="turn-header">
                     <div class="turn-num" x-text="'T' + turn.turn"></div>
                     <div class="turn-title">Turn <span x-text="turn.turn"></span></div>
-                    <span class="chip chip-muted" x-text="turn.attacker_technique || '—'" style="font-size:.6rem;"></span>
-                    <span class="owasp-pill" x-text="turn.owasp_category || 'LLM01'"></span>
+                    <span class="technique-tag" x-text="turn.attacker_technique || '—'"></span>
                     <span class="turn-time" x-text="formatMs(turn.latency_ms)"></span>
                     <span class="outcome-badge" :class="'outcome-' + (turn.judge_outcome||'draw')" x-text="(turn.judge_outcome||'draw').replace('_',' ').toUpperCase()"></span>
                 </div>
 
-                <div class="turn-body">
-                    <!-- 1. Attacker -->
-                    <div class="agent-row">
-                        <div class="agent-label">
-                            <span class="agent-icon">🔴</span>
-                            <span class="agent-name attacker">Attacker Agent</span>
-                            <span class="technique-tag" x-text="turn.attacker_technique || 'unknown'"></span>
-                        </div>
-                        <div class="agent-content">
-                            <div class="prompt-text" x-text="turn.adversarial_prompt || '—'"></div>
-                            <template x-if="turn.attacker_reasoning">
-                                <div style="margin-top:.5rem;font-size:.7rem;color:var(--muted);font-style:italic;" x-text="'↳ ' + turn.attacker_reasoning"></div>
-                            </template>
-                        </div>
+                <!-- 2-column combat exchange: Attacker vs Defender -->
+                <div class="combat-exchange">
+                    <!-- Left: Attacker -->
+                    <div class="combat-col">
+                        <div class="combat-col-label red">🔴 Attacker</div>
+                        <div class="prompt-text" x-text="turn.adversarial_prompt || '—'"></div>
                     </div>
-
-                    <!-- 2. Guardrail Input scan -->
-                    <div class="agent-row">
-                        <div class="agent-label">
-                            <span class="agent-icon">🛡</span>
-                            <span class="agent-name guardrail">Input Guard</span>
+                    <!-- Right: Defender -->
+                    <div class="combat-col">
+                        <div class="combat-col-label blue">🔵 Defender</div>
+                        <div class="verdict-inline">
+                            <span class="outcome-badge" :class="'outcome-' + (turn.judge_outcome||'draw')" x-text="turn.defender_verdict || 'BLOCK'"></span>
+                            <span class="owasp-pill" x-text="turn.owasp_category || 'LLM01'"></span>
                         </div>
-                        <div class="agent-content">
-                            <div class="scan-row" x-data="{}">
-                                <template x-if="(turn.guardrail_input_result?.blocked ?? false)">
-                                    <span class="blocked-pill">⛔ BLOCKED BY NEMO</span>
-                                </template>
-                                <template x-if="!(turn.guardrail_input_result?.blocked ?? false)">
-                                    <span class="pass-pill">✓ PASSED</span>
-                                </template>
-                                <span class="risk-badge" :class="riskClass(turn.risk_score_input)"
-                                    x-text="'Risk ' + (turn.risk_score_input != null ? Math.round(turn.risk_score_input*100)+'%' : 'N/A')"></span>
-                                <template x-for="s in (turn.guardrail_input_result?.scanners_triggered || [])">
-                                    <span class="scanner-tag" x-text="s"></span>
-                                </template>
-                            </div>
-                            <template x-if="turn.guardrail_input_result?.explanation">
-                                <div style="margin-top:.4rem;font-size:.68rem;color:var(--muted);" x-text="turn.guardrail_input_result.explanation"></div>
-                            </template>
-                        </div>
-                    </div>
-
-                    <!-- 3. Target Model response -->
-                    <template x-if="turn.model_response && turn.model_response !== '—BLOCKED BEFORE MODEL—' && turn.model_response !== '—BLOCKED—'">
-                        <div class="agent-row">
-                            <div class="agent-label">
-                                <span class="agent-icon">🤖</span>
-                                <span class="agent-name model">Target Model</span>
-                                <span class="technique-tag" x-text="meta.model || '—'"></span>
-                            </div>
-                            <div class="agent-content">
-                                <div class="response-text" x-text="turn.model_response"></div>
-                                <div style="margin-top:.4rem;font-size:.67rem;color:var(--muted);">
-                                    <span x-text="turn.tokens_used ? turn.tokens_used + ' tokens' : ''"></span>
-                                    <span x-show="turn.latency_ms" x-text="' · ' + turn.latency_ms + 'ms'"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                    <template x-if="turn.model_response === '—BLOCKED BEFORE MODEL—' || turn.model_response === '—BLOCKED—'">
-                        <div class="agent-row">
-                            <div class="agent-label">
-                                <span class="agent-icon">🤖</span>
-                                <span class="agent-name model">Target Model</span>
-                            </div>
-                            <div class="agent-content">
-                                <span class="blocked-pill">⛔ NEVER REACHED — BLOCKED AT INPUT</span>
-                            </div>
-                        </div>
-                    </template>
-
-                    <!-- 4. Guardrail Output scan -->
-                    <template x-if="turn.model_response && turn.model_response !== '—BLOCKED BEFORE MODEL—' && turn.model_response !== '—BLOCKED—'">
-                        <div class="agent-row">
-                            <div class="agent-label">
-                                <span class="agent-icon">🔍</span>
-                                <span class="agent-name guardrail">Output Guard</span>
-                            </div>
-                            <div class="agent-content">
-                                <div class="scan-row">
-                                    <span class="risk-badge" :class="riskClass(turn.risk_score_output)"
-                                        x-text="'Risk ' + (turn.risk_score_output != null ? Math.round(turn.risk_score_output*100)+'%' : 'N/A')"></span>
-                                    <template x-for="s in (turn.guardrail_output_result?.scanners_triggered || [])">
-                                        <span class="scanner-tag" x-text="s"></span>
-                                    </template>
-                                    <template x-if="(turn.guardrail_output_result?.scanners_triggered || []).length === 0">
-                                        <span class="pass-pill">✓ CLEAN</span>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-
-                    <!-- 5. Defender verdict -->
-                    <div class="agent-row">
-                        <div class="agent-label">
-                            <span class="agent-icon">🔵</span>
-                            <span class="agent-name defender">Defender Agent</span>
-                        </div>
-                        <div class="agent-content">
-                            <span class="verdict-text">
-                                Verdict: <span :class="'verdict-' + (turn.defender_verdict||'BLOCK')" x-text="turn.defender_verdict || 'BLOCK'"></span>
-                            </span>
-                            <template x-if="turn.defender_reasoning">
-                                <div style="margin-top:.45rem;font-size:.72rem;color:var(--muted2);" x-text="turn.defender_reasoning"></div>
-                            </template>
-                            <template x-if="turn.modified_response">
-                                <div style="margin-top:.4rem;font-size:.72rem;color:#fde047;">
-                                    Modified: <span x-text="turn.modified_response"></span>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    <!-- 6. Judge outcome -->
-                    <div class="agent-row">
-                        <div class="agent-label">
-                            <span class="agent-icon">⚖</span>
-                            <span class="agent-name judge">Policy Judge</span>
-                        </div>
-                        <div class="agent-content">
-                            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
-                                <span class="outcome-badge" :class="'outcome-' + (turn.judge_outcome||'draw')"
-                                    x-text="(turn.judge_outcome||'draw').replace(/_/g,' ').toUpperCase()"></span>
-                                <span class="owasp-pill" x-text="turn.owasp_category || 'LLM01'"></span>
-                            </div>
-                            <template x-if="turn.judge_reasoning">
-                                <div style="margin-top:.45rem;font-size:.72rem;color:var(--muted2);" x-text="turn.judge_reasoning"></div>
-                            </template>
-                        </div>
+                        <template x-if="turn.defender_reasoning">
+                            <div style="font-size:.68rem;color:var(--muted2);line-height:1.5;max-height:80px;overflow-y:auto;" x-text="turn.defender_reasoning"></div>
+                        </template>
                     </div>
                 </div>
+
+                <!-- Compact details strip -->
+                <div class="details-strip">
+                    <!-- Model response -->
+                    <template x-if="turn.model_response && turn.model_response !== '—BLOCKED BEFORE MODEL—' && turn.model_response !== '—BLOCKED—'">
+                        <span class="detail-item"><span class="detail-label">🤖 Model:</span> <span x-text="(turn.model_response||'').substring(0,60) + ((turn.model_response||'').length>60?'…':'')"></span></span>
+                    </template>
+                    <template x-if="turn.model_response === '—BLOCKED BEFORE MODEL—' || turn.model_response === '—BLOCKED—'">
+                        <span class="blocked-pill">⛔ Blocked at input</span>
+                    </template>
+                    <!-- Guardrail badges -->
+                    <span class="detail-item">
+                        <span class="detail-label">🛡 In:</span>
+                        <span class="risk-badge" :class="riskClass(turn.risk_score_input)" x-text="turn.risk_score_input != null ? Math.round(turn.risk_score_input*100)+'%' : 'N/A'"></span>
+                    </span>
+                    <span class="detail-item" x-show="turn.risk_score_output != null">
+                        <span class="detail-label">Out:</span>
+                        <span class="risk-badge" :class="riskClass(turn.risk_score_output)" x-text="turn.risk_score_output != null ? Math.round(turn.risk_score_output*100)+'%' : ''"></span>
+                    </span>
+                    <span class="detail-item" x-show="turn.tokens_used">
+                        <span class="detail-label">Tokens:</span> <span x-text="turn.tokens_used"></span>
+                    </span>
+                    <!-- Expand reasoning -->
+                    <button class="detail-expand" @click="turn._expanded = !turn._expanded" x-text="turn._expanded ? '▲ Hide' : '▼ Details'"></button>
+                </div>
+
+                <!-- Expandable reasoning panel -->
+                <template x-if="turn._expanded">
+                    <div class="reasoning-panel">
+                        <template x-if="turn.model_response && turn.model_response !== '—BLOCKED BEFORE MODEL—'">
+                            <div style="margin-bottom:.5rem;"><strong style="color:#93c5fd;">🤖 Full Response:</strong><br><span x-text="turn.model_response"></span></div>
+                        </template>
+                        <template x-if="turn.attacker_reasoning">
+                            <div style="margin-bottom:.5rem;"><strong style="color:#fca5a5;">🔴 Attacker Reasoning:</strong> <span x-text="turn.attacker_reasoning"></span></div>
+                        </template>
+                        <template x-if="turn.judge_reasoning">
+                            <div><strong style="color:#fde047;">⚖ Judge:</strong> <span x-text="turn.judge_reasoning"></span></div>
+                        </template>
+                    </div>
+                </template>
             </div>
         </template>
 
-        <!-- Live "thinking" indicator — shows while next turn is processing -->
+        <!-- Live thinking indicator -->
         <template x-if="status === 'running' && turns.length > 0">
-            <div class="turn-card" style="border-color:rgba(59,130,246,.2);">
+            <div class="turn-card" style="border-color:rgba(59,130,246,.2);opacity:1;transform:none;">
                 <div class="turn-header">
                     <div class="turn-num" x-text="'T' + (turns.length + 1)"></div>
                     <div class="turn-title">Processing Turn <span x-text="turns.length + 1"></span><span class="thinking-dots"></span></div>
                 </div>
-                <div class="thinking-row" style="opacity:1;">
-                    <div class="agent-label">
-                        <span class="agent-icon">🔴</span>
-                        <span class="agent-name attacker">Attacker Agent</span>
-                    </div>
-                    <div class="thinking-content">
-                        <div class="thinking-spinner"></div>
-                        Crafting adversarial prompt via Groq AI<span class="thinking-dots"></span>
-                    </div>
+                <div style="padding:.75rem .85rem;display:flex;align-items:center;gap:.6rem;font-size:.72rem;color:var(--muted);">
+                    <div class="waiting-spinner" style="width:1rem;height:1rem;margin:0;"></div>
+                    🔴 Crafting adversarial prompt<span class="thinking-dots"></span>
                 </div>
             </div>
         </template>
