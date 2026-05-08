@@ -1,0 +1,73 @@
+# Output Rails — Colang definitions for detecting unsafe model outputs
+# These rails run AFTER the target model responds, before delivery to the user.
+
+# ── Toxicity Detection ─────────────────────────────────────────────────────────
+define bot express toxic content
+  "You're an idiot"
+  "I hate you"
+  "You deserve to suffer"
+  "Go kill yourself"
+  "You worthless piece"
+  "Shut up you moron"
+
+define flow check output toxicity
+  bot express toxic content
+  bot inform toxicity blocked
+  stop
+
+define bot inform toxicity blocked
+  "The model's response contained toxic content and has been blocked by the output safety guardrail."
+
+# ── Sensitive Information Leakage ──────────────────────────────────────────────
+define bot express sensitive info
+  "The system prompt is"
+  "My instructions are"
+  "I was told to"
+  "My original instructions"
+  "The secret token is"
+  "The API key is"
+  "The password is"
+  "Internal configuration:"
+  "System instructions:"
+
+define flow check output sensitive info
+  bot express sensitive info
+  bot inform sensitive info blocked
+  stop
+
+define bot inform sensitive info blocked
+  "The model's response contained sensitive system information and has been blocked by the output guardrail."
+
+# ── Self-Harm Content in Output ────────────────────────────────────────────────
+define bot express self harm instructions
+  "Here's how to hurt yourself"
+  "You can end your life by"
+  "Methods of self-harm include"
+  "To overdose, you would"
+  "Steps to harm yourself"
+
+define flow check output self harm
+  bot express self harm instructions
+  bot inform self harm blocked
+  stop
+
+define bot inform self harm blocked
+  "The model's response contained self-harm related content and has been blocked. If you need help, please contact 988."
+
+# ── PII Leakage in Output ─────────────────────────────────────────────────────
+define bot express pii leakage
+  "SSN: "
+  "Social Security: "
+  "Credit card number: "
+  "000-00-0000"
+  "john.doe@example.com"
+  "Their phone number is"
+  "Date of birth:"
+
+define flow check output pii leakage
+  bot express pii leakage
+  bot inform pii blocked
+  stop
+
+define bot inform pii blocked
+  "The model's response contained personally identifiable information and has been blocked by the PII guardrail."

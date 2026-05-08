@@ -11,6 +11,8 @@ use App\AI\Agents\PolicyJudgeAgent;
 use App\Services\ModelGateway;
 use App\Services\NeMoGuardrailsService;
 use App\Services\LlmGuardService;
+use App\Services\EvaluationService;
+use App\Jobs\RunDuelJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -24,6 +26,7 @@ class DuelController extends Controller
         protected ModelGateway          $gateway,
         protected NeMoGuardrailsService $nemo,
         protected LlmGuardService       $llmGuard,
+        protected EvaluationService     $evaluationService,
     ) {}
 
     // ─── GET /duels ────────────────────────────────────────────────────────────
@@ -40,13 +43,27 @@ class DuelController extends Controller
         $policyProfile = $request->input('policy_profile', 'strict');
         $targetModel   = $request->input('target_model', 'llama3-8b-8192');
         $provider      = $request->input('provider', 'groq');
+        $async         = (bool) $request->input('async', false);
 
-        $duelId  = (string) Str::uuid();
+        $duelId = (string) Str::uuid();
+
+        // Cache initial state
+        Cache::put("duel:{$duelId}:status", ['status' => 'running', 'turns' => [], 'summary' => null], 600);
+
+        // ── Async mode (dispatches to queue) ─────────────────────────────────
+        if ($async) {
+            RunDuelJob::dispatch($duelId, $scenario->id, $maxTurns, $policyProfile, $targetModel, $provider);
+
+            return response()->json([
+                'duel_id'  => $duelId,
+                'status'   => 'queued',
+                'poll_url' => route('duels.status', $duelId),
+            ]);
+        }
+
+        // ── Sync mode (inline execution — original behavior) ─────────────────
         $history = [];
         $turns   = [];
-
-        // Cache live state for the /status endpoint
-        Cache::put("duel:{$duelId}:status", ['status' => 'running', 'turns' => []], 600);
 
         for ($i = 1; $i <= $maxTurns; $i++) {
 
@@ -165,6 +182,36 @@ class DuelController extends Controller
         $summary = DuelSummary::findOrFail($duelId);
         $turns   = DuelTurn::where('duel_id', $duelId)->orderBy('turn')->get();
         return response()->json(['summary' => $summary, 'turns' => $turns]);
+    }
+
+    // ─── GET /duels/history ──────────────────────────────────────────────────
+    public function history()
+    {
+        $summaries = DuelSummary::orderByDesc('created_at')->get();
+        $scenarios = Scenario::pluck('category', 'id')->toArray();
+
+        $duels = $summaries->map(fn($s) => [
+            'duel_id'          => $s->duel_id,
+            'scenario'         => $scenarios[$s->scenario_id] ?? 'unknown',
+            'target_model'     => $s->target_model,
+            'policy_profile'   => $s->policy_profile,
+            'total_turns'      => $s->total_turns,
+            'red_team_wins'    => $s->red_team_wins,
+            'blue_team_wins'   => $s->blue_team_wins,
+            'draws'            => $s->draws,
+            'attack_success'   => round($s->attack_success_rate * 100, 1),
+            'defense_eff'      => round($s->defense_effectiveness * 100, 1),
+            'owasp_categories' => $s->owasp_categories ?? [],
+            'created_at'       => $s->created_at?->format('M j, Y H:i'),
+        ]);
+
+        return response()->json(['duels' => $duels]);
+    }
+
+    // ─── GET /api/stats ──────────────────────────────────────────────────────
+    public function stats()
+    {
+        return response()->json($this->evaluationService->getDashboardStats());
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
