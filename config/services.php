@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    // ─── Red-Team Arena Guardrail Services ───────────────────────────────────
+    'nemo_guardrails' => [
+        'url' => env('NEMO_GUARDRAILS_URL', 'http://nemo-guardrails:8000'),
+    ],
+
+    'llm_guard' => [
+        'url' => env('LLM_GUARD_URL', 'http://llm-guard:8001'),
+    ],
+
 ];
