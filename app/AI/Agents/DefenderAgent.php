@@ -9,7 +9,7 @@ use Prism\Prism\ValueObjects\Messages\SystemMessage;
 class DefenderAgent
 {
     protected string $provider = 'groq';
-    protected string $model    = 'llama3-70b-8192';
+    protected string $model    = 'llama-3.3-70b-versatile';
 
     /**
      * Policy profile risk thresholds.

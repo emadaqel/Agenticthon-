@@ -12,7 +12,7 @@ class ModelGateway
     public function call(
         string $prompt,
         string $basePrompt,
-        string $targetModel = 'llama3-8b-8192',
+        string $targetModel = 'llama-3.1-8b-instant',
         string $provider    = 'groq',
     ): array {
         if ($provider === 'huggingface') {
@@ -58,16 +58,26 @@ class ModelGateway
             return $this->errorResponse($model, 'huggingface', 'HUGGINGFACE_API_KEY is not configured.', $startTime);
         }
 
-        // Try OpenAI-compatible chat completions endpoint first (modern instruct models)
+        // Strip ":provider" suffix to get a bare model ID for serverless fallback.
+        // The router expects the FULL name (including suffix) in the payload.
+        $hasProviderSuffix = (bool) preg_match('/^(.+):([a-z0-9_-]+)$/i', $model, $m);
+        $bareModelId       = $hasProviderSuffix ? $m[1] : $model;
+
+        $messages = [
+            ['role' => 'system', 'content' => $basePrompt],
+            ['role' => 'user',   'content' => $prompt],
+        ];
+
+        // ── 1. HF Inference Router ────────────────────────────────────────────
+        // URL: https://router.huggingface.co/v1/chat/completions
+        // Model field carries the full name, e.g. "Qwen/Qwen2.5-7B-Instruct:together"
+        // or bare "moonshotai/Kimi-K2-Instruct-0905" — the router resolves routing.
         try {
             $response = Http::withToken($apiKey)
-                ->timeout(60)
-                ->post("https://api-inference.huggingface.co/models/{$model}/v1/chat/completions", [
+                ->timeout(90)
+                ->post('https://router.huggingface.co/v1/chat/completions', [
                     'model'       => $model,
-                    'messages'    => [
-                        ['role' => 'system',    'content' => $basePrompt],
-                        ['role' => 'user',      'content' => $prompt],
-                    ],
+                    'messages'    => $messages,
                     'max_tokens'  => 512,
                     'temperature' => 0.7,
                     'stream'      => false,
@@ -78,7 +88,37 @@ class ModelGateway
             if ($response->successful()) {
                 $body = $response->json();
                 $text = $body['choices'][0]['message']['content'] ?? null;
+                if ($text !== null) {
+                    return [
+                        'response'      => trim($text),
+                        'model'         => $model,
+                        'provider'      => 'huggingface',
+                        'latency_ms'    => $latency,
+                        'tokens_input'  => $body['usage']['prompt_tokens'] ?? 0,
+                        'tokens_output' => $body['usage']['completion_tokens'] ?? 0,
+                    ];
+                }
+            }
+        } catch (\Exception) {
+            // fall through to serverless endpoint
+        }
 
+        // ── 2. HF Serverless chat completions (modern instruct models) ────────
+        try {
+            $url      = "https://api-inference.huggingface.co/models/{$bareModelId}/v1/chat/completions";
+            $response = Http::withToken($apiKey)->timeout(60)->post($url, [
+                'model'       => $bareModelId,
+                'messages'    => $messages,
+                'max_tokens'  => 512,
+                'temperature' => 0.7,
+                'stream'      => false,
+            ]);
+
+            $latency = (int) ((microtime(true) - $startTime) * 1000);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                $text = $body['choices'][0]['message']['content'] ?? null;
                 if ($text !== null) {
                     return [
                         'response'      => trim($text),
@@ -94,29 +134,21 @@ class ModelGateway
             // fall through to classic endpoint
         }
 
-        // Fallback: classic text-generation endpoint
+        // ── 3. Classic text-generation fallback ──────────────────────────────
         try {
-            $response = Http::withToken($apiKey)
-                ->timeout(60)
-                ->post("https://api-inference.huggingface.co/models/{$model}", [
+            $response = Http::withToken($apiKey)->timeout(60)
+                ->post("https://api-inference.huggingface.co/models/{$bareModelId}", [
                     'inputs'     => "System: {$basePrompt}\n\nUser: {$prompt}\n\nAssistant:",
-                    'parameters' => [
-                        'max_new_tokens'   => 512,
-                        'temperature'      => 0.7,
-                        'return_full_text' => false,
-                    ],
+                    'parameters' => ['max_new_tokens' => 512, 'temperature' => 0.7, 'return_full_text' => false],
                 ]);
 
             $latency = (int) ((microtime(true) - $startTime) * 1000);
 
             if ($response->successful()) {
                 $body = $response->json();
-                $text = is_array($body)
-                    ? ($body[0]['generated_text'] ?? 'No response generated.')
-                    : ($body['generated_text'] ?? 'No response generated.');
-
+                $text = is_array($body) ? ($body[0]['generated_text'] ?? '') : ($body['generated_text'] ?? '');
                 return [
-                    'response'      => trim($text),
+                    'response'      => trim($text) ?: 'No response generated.',
                     'model'         => $model,
                     'provider'      => 'huggingface',
                     'latency_ms'    => $latency,
@@ -125,8 +157,7 @@ class ModelGateway
                 ];
             }
 
-            return $this->errorResponse($model, 'huggingface', "HuggingFace API error: HTTP {$response->status()} — " . $response->body(), $startTime);
-
+            return $this->errorResponse($model, 'huggingface', "HF API HTTP {$response->status()}: " . $response->body(), $startTime);
         } catch (\Exception $e) {
             return $this->errorResponse($model, 'huggingface', $e->getMessage(), $startTime);
         }

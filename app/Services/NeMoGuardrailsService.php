@@ -28,9 +28,9 @@ class NeMoGuardrailsService
      *
      * @return array{blocked:bool, rail_triggered:string|null, explanation:string, flagged_for_review:bool}
      */
-    public function checkInput(string $prompt): array
+    public function checkInput(string $prompt, string $policy = 'strict'): array
     {
-        return $this->call('/v1/rails/input', ['prompt' => $prompt]);
+        return $this->call('/v1/rails/input', ['prompt' => $prompt, 'policy' => $policy]);
     }
 
     /**
@@ -38,9 +38,9 @@ class NeMoGuardrailsService
      *
      * @return array{blocked:bool, rail_triggered:string|null, explanation:string, flagged_for_review:bool}
      */
-    public function checkOutput(string $response): array
+    public function checkOutput(string $response, string $policy = 'strict'): array
     {
-        return $this->call('/v1/rails/output', ['response' => $response]);
+        return $this->call('/v1/rails/output', ['response' => $response, 'policy' => $policy]);
     }
 
     protected function call(string $endpoint, array $payload): array

@@ -391,12 +391,12 @@
     </div>
 
     <div class="nav-tabs">
-        <button class="tab-btn" :class="{active:tab==='arena'}" @click="tab='arena'">⚔ Arena</button>
-        <button class="tab-btn" :class="{active:tab==='dashboard'}" @click="tab='dashboard';loadStats()">📊 Dashboard</button>
-        <button class="tab-btn" :class="{active:tab==='history'}" @click="tab='history';loadHistory()">🗂 History</button>
-        <button class="tab-btn" :class="{active:tab==='compare'}" @click="tab='compare'">⚖ Compare</button>
-        <button class="tab-btn" :class="{active:tab==='scenarios'}" @click="tab='scenarios'">🧪 Scenarios</button>
-        <button class="tab-btn" :class="{active:tab==='reports'}" @click="tab='reports';loadHistory()">📄 Reports</button>
+        <button class="tab-btn" :class="{active:tab==='arena'}" @click="tab='arena';saveState()">⚔ Arena</button>
+        <button class="tab-btn" :class="{active:tab==='dashboard'}" @click="tab='dashboard';saveState();loadStats()">📊 Dashboard</button>
+        <button class="tab-btn" :class="{active:tab==='history'}" @click="tab='history';saveState();loadHistory()">🗂 History</button>
+        <button class="tab-btn" :class="{active:tab==='compare'}" @click="tab='compare';saveState()">⚖ Compare</button>
+        <button class="tab-btn" :class="{active:tab==='scenarios'}" @click="tab='scenarios';saveState()">🧪 Scenarios</button>
+        <button class="tab-btn" :class="{active:tab==='reports'}" @click="tab='reports';saveState();loadHistory()">📄 Reports</button>
     </div>
 
     <div class="topbar-right">
@@ -425,16 +425,27 @@
                     <div class="sb-stat"><strong style="color:var(--blue);">OWASP</strong><span>Mapped</span></div>
                 </div>
                 @foreach($scenarios as $s)
+                @php $sid = $s->id; $smeta = $s->metadata ?? []; @endphp
                 <div class="sc-card"
-                     :class="{active: activeId==='{{ $s->id }}'}"
-                     @click="selectScenario(@js(['id'=>$s->id,'category'=>$s->category,'description'=>$s->description,'severity'=>$s->metadata['severity']??'MEDIUM','patterns'=>$s->attack_patterns??[]]))">
+                     :class="{active: activeId==='{{ $sid }}'}"
+                     @click="selectScenario(@js([
+                        'id'          => $sid,
+                        'category'    => $s->category,
+                        'description' => $s->description,
+                        'severity'    => $smeta['severity'] ?? 'MEDIUM',
+                        'owasp'       => $smeta['owasp_category'] ?? 'LLM01',
+                        'vuln'        => $smeta['vulnerability'] ?? '',
+                        'patterns'    => $s->attack_patterns ?? [],
+                        'base_prompt' => $s->base_prompt,
+                        'promptfoo_url' => route('promptfoo.export', $sid),
+                     ]))">
                     <div class="sc-head">
                         <span class="cat-badge cat-{{ $s->category }}">{{ str_replace('_',' ',$s->category) }}</span>
-                        <span class="sev-badge sev-{{ $s->metadata['severity']??'MEDIUM' }}">{{ $s->metadata['severity']??'N/A' }}</span>
+                        <span class="sev-badge sev-{{ $smeta['severity']??'MEDIUM' }}">{{ $smeta['severity']??'N/A' }}</span>
                     </div>
                     <div class="sc-desc">{{ $s->description }}</div>
                     <div class="sc-chips">
-                        @foreach(array_slice($s->attack_patterns??[],0,2) as $p)
+                        @foreach($s->attack_patterns ?? [] as $p)
                         <span class="chip">{{ str_replace('_',' ',$p) }}</span>
                         @endforeach
                     </div>
@@ -445,26 +456,61 @@
             <!-- Arena Main -->
             <main class="arena-main">
                 <div class="arena-ctrl">
-                    <div>
-                        <div class="ctrl-title" x-text="activeId ? activeCat.replace(/_/g,' ').toUpperCase() : 'Security Validation Console'"></div>
-                        <div class="ctrl-desc" x-text="activeId ? activeDesc : 'Select a scenario from the left panel to begin.'"></div>
+
+                    <!-- Empty state -->
+                    <div x-show="!activeId" style="padding:.6rem 0 .4rem;color:var(--muted);">
+                        <div style="font-size:.9rem;font-weight:700;color:var(--muted2);">Security Validation Console</div>
+                        <div style="font-size:.75rem;margin-top:.2rem;">Select a scenario from the left panel to begin.</div>
                     </div>
-                    <div class="ctrl-row">
-                        <select class="ctrl-select" x-model="policyProfile">
+
+                    <!-- Inline scenario detail panel -->
+                    <div x-show="activeId" x-transition>
+                        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+                            <div>
+                                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+                                    <span style="font-size:.8rem;font-weight:800;letter-spacing:.04em;color:var(--orange);" x-text="activeCat.replace(/_/g,' ').toUpperCase()"></span>
+                                    <span style="font-size:.65rem;padding:.15rem .45rem;border-radius:.3rem;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;" x-text="activeSev"></span>
+                                    <span style="font-size:.65rem;padding:.15rem .45rem;border-radius:.3rem;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#93c5fd;" x-text="activeOwasp"></span>
+                                </div>
+                                <div style="font-size:.75rem;color:var(--muted2);margin-top:.25rem;max-width:480px;" x-text="activeDesc"></div>
+                            </div>
+                            <a :href="activePromptFooUrl" target="_blank"
+                               style="font-size:.65rem;padding:.25rem .7rem;border-radius:.35rem;border:1px solid rgba(168,85,247,.35);background:rgba(168,85,247,.08);color:#c084fc;text-decoration:none;white-space:nowrap;flex-shrink:0;"
+                               x-show="activeId">⬇ PromptFoo YAML</a>
+                        </div>
+
+                        <!-- Target system prompt -->
+                        <div style="margin-top:.65rem;background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:.4rem;overflow:hidden;">
+                            <div style="font-size:.6rem;font-weight:700;letter-spacing:.07em;color:var(--muted);padding:.3rem .65rem;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);text-transform:uppercase;">Target System Prompt</div>
+                            <pre style="font-family:var(--mono);font-size:.7rem;color:#a5f3fc;padding:.55rem .7rem;white-space:pre-wrap;word-break:break-word;max-height:90px;overflow-y:auto;margin:0;" x-text="activeBasePrompt"></pre>
+                        </div>
+
+                        <!-- Attack patterns -->
+                        <div style="margin-top:.45rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+                            <span style="font-size:.6rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Attack Patterns:</span>
+                            <template x-for="p in activePatterns" :key="p">
+                                <span style="font-size:.62rem;padding:.15rem .45rem;border-radius:.25rem;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.25);color:#fdba74;" x-text="p.replace(/_/g,' ')"></span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Run controls -->
+                    <div class="ctrl-row" style="margin-top:.6rem;">
+                        <select class="ctrl-select" x-model="policyProfile" @change="saveState()">
                             <option value="strict">Strict Policy</option>
                             <option value="moderate">Moderate Policy</option>
                             <option value="permissive">Permissive Policy</option>
                         </select>
-                        <select class="ctrl-select" x-model="provider" @change="updateModels()">
+                        <select class="ctrl-select" x-model="provider" @change="updateModels();saveState()">
                             <option value="groq">Groq</option>
                             <option value="huggingface">Hugging Face</option>
                         </select>
-                        <select class="ctrl-select" x-model="targetModel">
+                        <select class="ctrl-select" x-model="targetModel" @change="saveState()">
                             <template x-for="m in modelOptions" :key="m.value">
                                 <option :value="m.value" x-text="m.label"></option>
                             </template>
                         </select>
-                        <select class="ctrl-select" x-model="maxTurns">
+                        <select class="ctrl-select" x-model="maxTurns" @change="saveState()">
                             <option value="2">2 Turns</option>
                             <option value="3" selected>3 Turns</option>
                             <option value="5">5 Turns</option>
@@ -586,8 +632,22 @@
                     </template>
 
                     <template x-if="running">
-                        <div class="loader"><span class="spin"></span> Agents are dueling… 10–30 seconds per turn.</div>
+                        <div style="border:1px solid rgba(249,115,22,.25);border-radius:.5rem;padding:.85rem 1rem;background:rgba(249,115,22,.04);margin-top:.5rem;">
+                            <div style="display:flex;align-items:center;gap:.65rem;">
+                                <span style="display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:#f97316;animation:pulseOrange 1s ease infinite;flex-shrink:0;"></span>
+                                <span style="font-size:.75rem;font-weight:700;color:#fdba74;" x-text="liveThinking && liveTurn ? 'Turn '+liveTurn+' — Agents processing…' : (turns.length > 0 ? 'Turn '+(turns.length+1)+' starting…' : 'Initializing duel…')"></span>
+                                <span style="font-size:.65rem;color:var(--muted);margin-left:auto;" x-text="turns.length > 0 ? turns.length+' turn'+(turns.length>1?'s':'') +' completed' : 'Waiting for first turn…'"></span>
+                            </div>
+                            <div style="margin-top:.55rem;display:flex;gap:4px;">
+                                <template x-for="n in parseInt(maxTurns)" :key="n">
+                                    <div style="height:3px;flex:1;border-radius:999px;transition:background .4s;"
+                                         :style="n <= turns.length ? 'background:'+( (turns[n-1]||{}).judge_outcome==='red_team_win' ? '#ef4444' : '#22c55e' ) : (liveThinking && n===liveTurn ? 'background:rgba(249,115,22,.6)' : 'background:rgba(255,255,255,.1)')">
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                     </template>
+                    <style>@keyframes pulseOrange{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.4);}50%{box-shadow:0 0 0 6px rgba(249,115,22,0);}}</style>
 
                 </div>
             </main>
@@ -803,18 +863,16 @@
                         <label>Model A</label>
                         <select class="form-control" x-model="cmpModel1">
                             <optgroup label="── Groq ──">
-                                <option value="llama3-8b-8192">Llama 3 8B (fast)</option>
-                                <option value="llama3-70b-8192">Llama 3 70B (smart)</option>
-                                <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
                                 <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
-                                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                                <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
                                 <option value="gemma2-9b-it">Gemma 2 9B IT</option>
+                                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
                             </optgroup>
-                            <optgroup label="── HuggingFace ──">
-                                <option value="hf::mistralai/Mistral-7B-Instruct-v0.3">Mistral 7B v0.3 (HF)</option>
-                                <option value="hf::HuggingFaceH4/zephyr-7b-beta">Zephyr 7B Beta (HF)</option>
-                                <option value="hf::Qwen/Qwen2.5-7B-Instruct">Qwen 2.5 7B (HF)</option>
-                                <option value="hf::microsoft/Phi-3.5-mini-instruct">Phi-3.5 Mini (HF)</option>
+                            <optgroup label="── HuggingFace (via Router) ──">
+                                <option value="hf::Qwen/Qwen2.5-7B-Instruct:together">Qwen 2.5 7B (Together)</option>
+                                <option value="hf::meta-llama/Llama-3.3-70B-Instruct:together">Llama 3.3 70B (Together)</option>
+                                <option value="hf::deepseek-ai/DeepSeek-R1:together">DeepSeek R1 (Together)</option>
+                                <option value="hf::moonshotai/Kimi-K2-Instruct">Kimi K2 Instruct</option>
                             </optgroup>
                         </select>
                     </div>
@@ -822,18 +880,16 @@
                         <label>Model B</label>
                         <select class="form-control" x-model="cmpModel2">
                             <optgroup label="── Groq ──">
-                                <option value="llama3-70b-8192">Llama 3 70B (smart)</option>
-                                <option value="llama3-8b-8192">Llama 3 8B (fast)</option>
                                 <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
                                 <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
-                                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
                                 <option value="gemma2-9b-it">Gemma 2 9B IT</option>
+                                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
                             </optgroup>
-                            <optgroup label="── HuggingFace ──">
-                                <option value="hf::mistralai/Mistral-7B-Instruct-v0.3">Mistral 7B v0.3 (HF)</option>
-                                <option value="hf::HuggingFaceH4/zephyr-7b-beta">Zephyr 7B Beta (HF)</option>
-                                <option value="hf::Qwen/Qwen2.5-7B-Instruct">Qwen 2.5 7B (HF)</option>
-                                <option value="hf::microsoft/Phi-3.5-mini-instruct">Phi-3.5 Mini (HF)</option>
+                            <optgroup label="── HuggingFace (via Router) ──">
+                                <option value="hf::Qwen/Qwen2.5-7B-Instruct:together">Qwen 2.5 7B (Together)</option>
+                                <option value="hf::meta-llama/Llama-3.3-70B-Instruct:together">Llama 3.3 70B (Together)</option>
+                                <option value="hf::deepseek-ai/DeepSeek-R1:together">DeepSeek R1 (Together)</option>
+                                <option value="hf::moonshotai/Kimi-K2-Instruct">Kimi K2 Instruct</option>
                             </optgroup>
                         </select>
                     </div>
@@ -974,7 +1030,8 @@
                         @endforeach
                     </div>
                     <div style="margin-top:.65rem;display:flex;gap:.4rem;">
-                        <button class="btn-sm" @click="tab='arena';selectScenario(@js(['id'=>$s->id,'category'=>$s->category,'description'=>$s->description,'severity'=>$s->metadata['severity']??'MEDIUM','patterns'=>$s->attack_patterns??[]]))">Use in Arena</button>
+                        <button class="btn-sm" @click="tab='arena';selectScenario(@js(['id'=>$s->id,'category'=>$s->category,'description'=>$s->description,'severity'=>$s->metadata['severity']??'MEDIUM','owasp'=>$s->metadata['owasp_category']??'LLM01','vuln'=>$s->metadata['vulnerability']??'','patterns'=>$s->attack_patterns??[],'base_prompt'=>$s->base_prompt,'promptfoo_url'=>route('promptfoo.export',$s->id)]))">Use in Arena</button>
+                        <a class="btn-sm" href="{{ route('promptfoo.export', $s->id) }}" target="_blank">⬇ PromptFoo</a>
                         @if(!empty($s->metadata['custom']))
                         <button class="btn-sm btn-sm-red" @click="deleteScenario('{{ $s->id }}')">Delete</button>
                         @endif
@@ -1057,16 +1114,19 @@ function arenaApp() {
         // Arena
         scenarios: @json($scenarios),
         activeId: null, activeDesc:'', activeCat:'', activeSev:'', activePats:[],
+        activeOwasp:'', activeVuln:'', activeBasePrompt:'', activePromptFooUrl:'',
+        liveThinking: false, liveTurn: 0, _pollTimer: null,
         policyProfile: 'strict',
         provider: 'groq',
-        targetModel: 'llama3-8b-8192',
+        targetModel: 'llama-3.1-8b-instant',
         maxTurns: 3,
         running: false,
         turns: [], summary: null, errorMessage: '', lastDuelId: null,
         modelOptions: [
-            {value:'llama3-8b-8192',   label:'llama3-8b'},
-            {value:'llama3-70b-8192',  label:'llama3-70b'},
-            {value:'mixtral-8x7b-32768',label:'Mixtral 8x7B'},
+            {value:'llama-3.1-8b-instant',    label:'Llama 3.1 8B Instant'},
+            {value:'llama-3.3-70b-versatile',  label:'Llama 3.3 70B Versatile'},
+            {value:'gemma2-9b-it',             label:'Gemma 2 9B IT'},
+            {value:'mixtral-8x7b-32768',       label:'Mixtral 8x7B'},
         ],
 
         // Dashboard
@@ -1076,7 +1136,7 @@ function arenaApp() {
         historyDuels: [], historyLoading: false,
 
         // Compare
-        cmpScenarioId:'', cmpModel1:'llama3-8b-8192', cmpModel2:'llama3-70b-8192',
+        cmpScenarioId:'', cmpModel1:'llama-3.1-8b-instant', cmpModel2:'llama-3.3-70b-versatile',
         cmpPolicy:'strict', cmpRunning:false, cmpResults:null, cmpWinner:'', cmpError:'',
 
         // Scenarios
@@ -1092,9 +1152,61 @@ function arenaApp() {
 
         init() {
             this.refreshHealth();
-            if (this.showOnboard) {
-                // keep showing
-            }
+            // Reload health every 30 seconds
+            setInterval(() => this.refreshHealth(), 30000);
+
+            // Restore persisted state from localStorage
+            try {
+                const saved = JSON.parse(localStorage.getItem('rta_state') || '{}');
+                if (saved.tab) this.tab = saved.tab;
+                if (saved.activeId) {
+                    this.activeId           = saved.activeId;
+                    this.activeDesc         = saved.activeDesc || '';
+                    this.activeCat          = saved.activeCat || '';
+                    this.activeSev          = saved.activeSev || '';
+                    this.activePats         = saved.activePats || [];
+                    this.activePatterns     = saved.activePatterns || [];
+                    this.activeOwasp        = saved.activeOwasp || '';
+                    this.activeBasePrompt   = saved.activeBasePrompt || '';
+                    this.activePromptFooUrl = saved.activePromptFooUrl || '';
+                    this.activeVuln         = saved.activeVuln || '';
+                }
+                if (saved.policyProfile) this.policyProfile = saved.policyProfile;
+                if (saved.provider) { this.provider = saved.provider; this.updateModels(); }
+                if (saved.maxTurns)  this.maxTurns  = saved.maxTurns;
+                if (saved.targetModel) this.targetModel = saved.targetModel;
+                if (saved.turns && saved.turns.length)   this.turns   = saved.turns;
+                if (saved.summary)                       this.summary = saved.summary;
+                if (saved.lastDuelId)                    this.lastDuelId = saved.lastDuelId;
+                if (saved.cmpResults)  this.cmpResults  = saved.cmpResults;
+                if (saved.cmpWinner)   this.cmpWinner   = saved.cmpWinner;
+                if (saved.cmpModel1)   this.cmpModel1   = saved.cmpModel1;
+                if (saved.cmpModel2)   this.cmpModel2   = saved.cmpModel2;
+                if (saved.cmpPolicy)   this.cmpPolicy   = saved.cmpPolicy;
+                if (saved.cmpScenarioId) this.cmpScenarioId = saved.cmpScenarioId;
+            } catch(e) {}
+
+            // Always load fresh data on startup
+            this.loadStats();
+            this.loadHistory();
+        },
+
+        saveState() {
+            try {
+                localStorage.setItem('rta_state', JSON.stringify({
+                    tab: this.tab, activeId: this.activeId, activeDesc: this.activeDesc,
+                    activeCat: this.activeCat, activeSev: this.activeSev,
+                    activePats: this.activePats, activePatterns: this.activePatterns,
+                    activeOwasp: this.activeOwasp, activeBasePrompt: this.activeBasePrompt,
+                    activePromptFooUrl: this.activePromptFooUrl, activeVuln: this.activeVuln,
+                    policyProfile: this.policyProfile, provider: this.provider, maxTurns: this.maxTurns,
+                    targetModel: this.targetModel,
+                    turns: this.turns, summary: this.summary, lastDuelId: this.lastDuelId,
+                    cmpResults: this.cmpResults, cmpWinner: this.cmpWinner,
+                    cmpModel1: this.cmpModel1, cmpModel2: this.cmpModel2,
+                    cmpPolicy: this.cmpPolicy, cmpScenarioId: this.cmpScenarioId,
+                }));
+            } catch(e) {}
         },
 
         startDemo() {
@@ -1114,32 +1226,35 @@ function arenaApp() {
         },
 
         selectScenario(s) {
-            this.activeId   = s.id;
-            this.activeDesc = s.description;
-            this.activeCat  = s.category;
-            this.activeSev  = s.severity;
-            this.activePats = s.patterns || [];
+            this.activeId           = s.id;
+            this.activeDesc         = s.description;
+            this.activeCat          = s.category;
+            this.activeSev          = s.severity;
+            this.activePats         = s.patterns || [];
+            this.activeOwasp        = s.owasp || '';
+            this.activeVuln         = s.vuln || '';
+            this.activeBasePrompt   = s.base_prompt || '';
+            this.activePromptFooUrl = s.promptfoo_url || '';
+            this.activePatterns     = s.patterns || [];
             this.turns = []; this.summary = null; this.errorMessage = ''; this.lastDuelId = null;
+            this.saveState();
         },
 
         updateModels() {
             if (this.provider === 'huggingface') {
                 this.modelOptions = [
-                    {value:'mistralai/Mistral-7B-Instruct-v0.3',   label:'Mistral 7B Instruct v0.3'},
-                    {value:'HuggingFaceH4/zephyr-7b-beta',          label:'Zephyr 7B Beta'},
-                    {value:'Qwen/Qwen2.5-7B-Instruct',              label:'Qwen 2.5 7B Instruct'},
-                    {value:'microsoft/Phi-3.5-mini-instruct',        label:'Phi-3.5 Mini Instruct'},
-                    {value:'google/gemma-2-2b-it',                   label:'Gemma 2 2B IT'},
+                    {value:'Qwen/Qwen2.5-7B-Instruct:together',         label:'Qwen 2.5 7B (Together)'},
+                    {value:'meta-llama/Llama-3.3-70B-Instruct:together', label:'Llama 3.3 70B (Together)'},
+                    {value:'deepseek-ai/DeepSeek-R1:together',           label:'DeepSeek R1 (Together)'},
+                    {value:'moonshotai/Kimi-K2-Instruct',                label:'Kimi K2 Instruct'},
                 ];
                 this.targetModel = this.modelOptions[0].value;
             } else {
                 this.modelOptions = [
-                    {value:'llama3-8b-8192',            label:'Llama 3 8B (fast)'},
-                    {value:'llama3-70b-8192',            label:'Llama 3 70B (smart)'},
-                    {value:'llama-3.3-70b-versatile',   label:'Llama 3.3 70B Versatile'},
                     {value:'llama-3.1-8b-instant',      label:'Llama 3.1 8B Instant'},
-                    {value:'mixtral-8x7b-32768',         label:'Mixtral 8x7B (long ctx)'},
+                    {value:'llama-3.3-70b-versatile',   label:'Llama 3.3 70B Versatile'},
                     {value:'gemma2-9b-it',               label:'Gemma 2 9B IT'},
+                    {value:'mixtral-8x7b-32768',         label:'Mixtral 8x7B'},
                 ];
                 this.targetModel = this.modelOptions[0].value;
             }
@@ -1147,7 +1262,8 @@ function arenaApp() {
 
         async runDuel() {
             if (!this.activeId || this.running) return;
-            this.running = true; this.turns = []; this.summary = null; this.errorMessage = ''; this.lastDuelId = null;
+            this.running = true; this.turns = []; this.summary = null; this.errorMessage = '';
+            this.lastDuelId = null; this.liveThinking = false; this.liveTurn = 0;
             try {
                 const r = await fetch(`/duels/${this.activeId}/run`, {
                     method:'POST',
@@ -1156,20 +1272,42 @@ function arenaApp() {
                 });
                 const d = await r.json();
                 if (!r.ok) throw new Error(d.message || 'Duel failed.');
-                // Async mode: redirect to live page immediately
-                if (d.live_url) { window.location.href = d.live_url; return; }
-                this.turns = d.turns || [];
-                this.summary = d.summary || null;
-                this.lastDuelId = d.duel_id || null;
+                if (d.duel_id) {
+                    this.lastDuelId = d.duel_id;
+                    this.startLivePolling(d.duel_id);
+                }
             } catch(e) {
                 this.errorMessage = e.message || 'Unable to run duel.';
-            } finally {
                 this.running = false;
             }
         },
 
+        startLivePolling(duelId) {
+            if (this._pollTimer) clearInterval(this._pollTimer);
+            this._pollTimer = setInterval(async () => {
+                try {
+                    const r = await fetch(`/duels/${duelId}/status`);
+                    if (!r.ok) return;
+                    const d = await r.json();
+                    this.turns = d.turns || [];
+                    this.liveThinking = d.thinking || false;
+                    this.liveTurn = d.current_turn || 0;
+                    if (d.status === 'complete') {
+                        clearInterval(this._pollTimer);
+                        this._pollTimer = null;
+                        this.summary = d.summary || null;
+                        this.running = false;
+                        this.liveThinking = false;
+                        this.saveState();
+                        // Force fresh reload on next tab visit
+                        this.stats = null;
+                        this.historyDuels = [];
+                    }
+                } catch(e) {}
+            }, 1200);
+        },
+
         async loadStats() {
-            if (this.stats) return;
             this.statsLoading = true;
             try {
                 const r = await fetch('/api/stats');
@@ -1179,7 +1317,6 @@ function arenaApp() {
         },
 
         async loadHistory() {
-            if (this.historyDuels.length > 0) return;
             this.historyLoading = true;
             try {
                 const r = await fetch('/duels/history/all');
@@ -1216,6 +1353,7 @@ function arenaApp() {
                 if (!r.ok) throw new Error(d.message || 'Compare failed.');
                 this.cmpResults = d.comparison;
                 this.cmpWinner  = d.winner || '';
+                this.saveState();
                 // Force history reload
                 this.historyDuels = [];
             } catch(e) {
@@ -1235,7 +1373,8 @@ function arenaApp() {
                 if (!r.ok) throw new Error(Object.values(d.errors||{}).flat().join(', ') || d.message || 'Error');
                 this.scenarioSuccess = true;
                 this.newScenario = { category:'', description:'', base_prompt:'', severity:'HIGH', owasp:'LLM01', attack_patterns:[] };
-                setTimeout(()=>{ this.scenarioSuccess=false; window.location.reload(); }, 1500);
+                await this.reloadScenarios();
+                setTimeout(()=>{ this.scenarioSuccess=false; }, 1500);
             } catch(e) {
                 this.scenarioError = e.message;
             } finally { this.scenarioSaving = false; }
@@ -1244,7 +1383,19 @@ function arenaApp() {
         async deleteScenario(id) {
             if (!confirm('Delete this custom scenario?')) return;
             await fetch(`/scenarios/${id}`, { method:'DELETE', headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'} });
-            window.location.reload();
+            if (this.activeId === id) {
+                this.activeId = null; this.activeDesc = ''; this.activeCat = '';
+                this.activeSev = ''; this.activePats = []; this.activeOwasp = '';
+                this.activeVuln = ''; this.activeBasePrompt = ''; this.activePromptFooUrl = '';
+            }
+            await this.reloadScenarios();
+        },
+
+        async reloadScenarios() {
+            try {
+                const r = await fetch('/scenarios', { headers:{'Accept':'application/json'} });
+                if (r.ok) this.scenarios = await r.json();
+            } catch(e) {}
         },
 
         async seedDemo() {

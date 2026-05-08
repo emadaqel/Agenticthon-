@@ -31,9 +31,9 @@ class LlmGuardService
      *
      * @return array{risk_score:float, scanners_triggered:string[], sanitized_text:string, flagged_for_review:bool}
      */
-    public function scanInput(string $prompt): array
+    public function scanInput(string $prompt, string $policy = 'strict'): array
     {
-        return $this->call('/scan/prompt', ['prompt' => $prompt], $prompt);
+        return $this->call('/scan/prompt', ['prompt' => $prompt, 'policy' => $policy], $prompt);
     }
 
     /**
@@ -41,9 +41,9 @@ class LlmGuardService
      *
      * @return array{risk_score:float, scanners_triggered:string[], sanitized_text:string, flagged_for_review:bool}
      */
-    public function scanOutput(string $response): array
+    public function scanOutput(string $response, string $policy = 'strict'): array
     {
-        return $this->call('/scan/output', ['output' => $response], $response);
+        return $this->call('/scan/output', ['output' => $response, 'policy' => $policy], $response);
     }
 
     protected function call(string $endpoint, array $payload, string $originalText): array

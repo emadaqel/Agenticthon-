@@ -5,6 +5,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ScenarioController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\DemoController;
+use App\Http\Controllers\PromptFooController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('welcome'));
@@ -20,6 +21,7 @@ Route::get('/duels/{duel}/report/html',   [ReportController::class, 'html'])->na
 Route::get('/duels/history/all',          [DuelController::class, 'history'])->name('duels.history');
 
 // ── Scenario Routes ───────────────────────────────────────────────────────────
+Route::get('/scenarios',                  [ScenarioController::class, 'index'])->name('scenarios.index');
 Route::post('/scenarios',                 [ScenarioController::class, 'store'])->name('scenarios.store');
 Route::delete('/scenarios/{scenario}',    [ScenarioController::class, 'destroy'])->name('scenarios.destroy');
 
@@ -30,3 +32,7 @@ Route::get('/api/health',                 [HealthController::class, 'check'])->n
 // ── Demo Routes ───────────────────────────────────────────────────────────────
 Route::post('/demo/seed',                 [DemoController::class, 'seed'])->name('demo.seed');
 Route::post('/demo/reset',                [DemoController::class, 'reset'])->name('demo.reset');
+
+// ── PromptFoo Integration ─────────────────────────────────────────────────────
+Route::get('/promptfoo',                         [PromptFooController::class, 'index'])->name('promptfoo.index');
+Route::get('/promptfoo/{scenario}/export',       [PromptFooController::class, 'export'])->name('promptfoo.export');

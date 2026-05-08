@@ -9,6 +9,11 @@ use Illuminate\Support\Str;
 
 class ScenarioController extends Controller
 {
+    public function index(): JsonResponse
+    {
+        return response()->json(Scenario::all());
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([

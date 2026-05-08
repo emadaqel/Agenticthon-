@@ -41,7 +41,7 @@ class DuelController extends Controller
     {
         $maxTurns      = (int) $request->input('max_turns', 3);
         $policyProfile = $request->input('policy_profile', 'strict');
-        $rawModel      = $request->input('target_model', 'llama3-8b-8192');
+        $rawModel      = $request->input('target_model', 'llama-3.1-8b-instant');
         $rawProvider   = $request->input('provider', 'groq');
 
         [$targetModel, $provider] = $this->resolveModelAndProvider($rawModel, $rawProvider);
@@ -228,7 +228,7 @@ class DuelController extends Controller
     // ─── POST /duels/{scenario}/compare ──────────────────────────────────────
     public function compare(Request $request, Scenario $scenario)
     {
-        $models        = $request->input('models', ['llama3-8b-8192', 'llama3-70b-8192']);
+        $models        = $request->input('models', ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile']);
         $policyProfile = $request->input('policy_profile', 'strict');
         $maxTurns      = (int) $request->input('max_turns', 3);
         $defaultProvider = $request->input('provider', 'groq');

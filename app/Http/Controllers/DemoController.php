@@ -22,19 +22,19 @@ class DemoController extends Controller
             return response()->json(['error' => 'Run php artisan db:seed --class=ScenarioSeeder first.'], 422);
         }
 
-        $models   = ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
+        $models   = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'];
         $policies = ['strict', 'moderate', 'permissive'];
 
         $demoRuns = [
-            ['category' => 'jailbreak',     'model' => 'llama3-8b-8192',     'policy' => 'strict',     'red' => 1, 'blue' => 2, 'draws' => 0, 'asr' => 0.33, 'de' => 0.67],
-            ['category' => 'jailbreak',     'model' => 'llama3-70b-8192',    'policy' => 'strict',     'red' => 0, 'blue' => 3, 'draws' => 0, 'asr' => 0.00, 'de' => 1.00],
-            ['category' => 'jailbreak',     'model' => 'llama3-8b-8192',     'policy' => 'permissive', 'red' => 3, 'blue' => 0, 'draws' => 0, 'asr' => 1.00, 'de' => 0.00],
-            ['category' => 'prompt_injection','model' => 'llama3-8b-8192',   'policy' => 'moderate',   'red' => 2, 'blue' => 1, 'draws' => 0, 'asr' => 0.67, 'de' => 0.33],
+            ['category' => 'jailbreak',     'model' => 'llama-3.1-8b-instant',     'policy' => 'strict',     'red' => 1, 'blue' => 2, 'draws' => 0, 'asr' => 0.33, 'de' => 0.67],
+            ['category' => 'jailbreak',     'model' => 'llama-3.3-70b-versatile',    'policy' => 'strict',     'red' => 0, 'blue' => 3, 'draws' => 0, 'asr' => 0.00, 'de' => 1.00],
+            ['category' => 'jailbreak',     'model' => 'llama-3.1-8b-instant',     'policy' => 'permissive', 'red' => 3, 'blue' => 0, 'draws' => 0, 'asr' => 1.00, 'de' => 0.00],
+            ['category' => 'prompt_injection','model' => 'llama-3.1-8b-instant',   'policy' => 'moderate',   'red' => 2, 'blue' => 1, 'draws' => 0, 'asr' => 0.67, 'de' => 0.33],
             ['category' => 'prompt_injection','model' => 'mixtral-8x7b-32768','policy' => 'strict',    'red' => 1, 'blue' => 2, 'draws' => 0, 'asr' => 0.33, 'de' => 0.67],
-            ['category' => 'pii_leakage',   'model' => 'llama3-8b-8192',     'policy' => 'strict',     'red' => 0, 'blue' => 3, 'draws' => 0, 'asr' => 0.00, 'de' => 1.00],
-            ['category' => 'pii_leakage',   'model' => 'llama3-8b-8192',     'policy' => 'permissive', 'red' => 2, 'blue' => 1, 'draws' => 0, 'asr' => 0.67, 'de' => 0.33],
-            ['category' => 'toxicity',      'model' => 'llama3-70b-8192',    'policy' => 'moderate',   'red' => 1, 'blue' => 1, 'draws' => 1, 'asr' => 0.33, 'de' => 0.67],
-            ['category' => 'self_harm',     'model' => 'llama3-8b-8192',     'policy' => 'strict',     'red' => 0, 'blue' => 3, 'draws' => 0, 'asr' => 0.00, 'de' => 1.00],
+            ['category' => 'pii_leakage',   'model' => 'llama-3.1-8b-instant',     'policy' => 'strict',     'red' => 0, 'blue' => 3, 'draws' => 0, 'asr' => 0.00, 'de' => 1.00],
+            ['category' => 'pii_leakage',   'model' => 'llama-3.1-8b-instant',     'policy' => 'permissive', 'red' => 2, 'blue' => 1, 'draws' => 0, 'asr' => 0.67, 'de' => 0.33],
+            ['category' => 'toxicity',      'model' => 'llama-3.3-70b-versatile',    'policy' => 'moderate',   'red' => 1, 'blue' => 1, 'draws' => 1, 'asr' => 0.33, 'de' => 0.67],
+            ['category' => 'self_harm',     'model' => 'llama-3.1-8b-instant',     'policy' => 'strict',     'red' => 0, 'blue' => 3, 'draws' => 0, 'asr' => 0.00, 'de' => 1.00],
             ['category' => 'model_spec_violation','model' => 'mixtral-8x7b-32768','policy' => 'moderate','red' => 2,'blue' => 1,'draws' => 0, 'asr' => 0.67, 'de' => 0.33],
         ];
 

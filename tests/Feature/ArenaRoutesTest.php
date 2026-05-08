@@ -50,7 +50,7 @@ class ArenaRoutesTest extends TestCase
         DB::table('duel_summaries')->insert([
             'duel_id' => '11111111-1111-1111-1111-111111111111',
             'scenario_id' => $scenarioId,
-            'target_model' => 'llama3-8b-8192',
+            'target_model' => 'llama-3.1-8b-instant',
             'policy_profile' => 'strict',
             'total_turns' => 1,
             'red_team_wins' => 0,
