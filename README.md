@@ -15,7 +15,7 @@ Red-Team Arena is an agentic AI security validation platform. It runs adversaria
 - A deterministic vulnerable-versus-remediated demo and CI security gate.
 - Truthful evidence states: `effective`, `bypassed`, `not_triggered`, `unavailable`, and `not_evaluated`.
 
-The optional Docker guardrail service is a lightweight, local rule engine exposing NeMo-compatible and LLM Guard-compatible HTTP surfaces. It does **not** bundle the upstream NeMo Guardrails or LLM Guard packages. Health responses expose `engine: arena-rules-v2` and `upstream_package: false` so reports do not overstate the control in use.
+The optional Docker guardrail service is a lightweight, local rule engine exposing NeMo-compatible and LLM Guard-compatible HTTP surfaces. It does **not** bundle the upstream NeMo Guardrails or LLM Guard packages. Health responses expose `engine: arena-rules-v2` and `upstream_package: false`.
 
 ## Architecture
 
@@ -31,7 +31,101 @@ GitHub corpus -> fingerprinted run -> input controls -> target model -> output c
 Agent graph -> reachable sensitive paths -> risk score -> least-privilege controls
 ```
 
-## Quick start
+## Open and access the project
+
+### Requirements
+
+- Docker Desktop with Docker Compose enabled.
+- Git.
+- Free host ports `80`, `5432`, `6379`, `8000`, `8001`, and `5173`.
+- A Groq API key for live duels. OpenAI and Hugging Face keys are optional.
+
+From PowerShell, clone the repository and switch to the feature branch:
+
+```powershell
+git clone https://github.com/emadaqel/Agenticthon-.git
+Set-Location Agenticthon-
+git switch codex/sentinel-security-platform
+Copy-Item .env.example .env
+```
+
+Add API keys to `.env` as needed:
+
+```dotenv
+GROQ_API_KEY=
+OPENAI_API_KEY=
+HUGGINGFACE_API_KEY=
+```
+
+Start and initialize the application:
+
+```powershell
+docker compose up -d --build
+docker compose exec laravel.test php artisan key:generate
+docker compose exec laravel.test php artisan migrate --seed
+```
+
+The first build can take several minutes. Confirm the containers with:
+
+```powershell
+docker compose ps
+```
+
+Open these addresses in a browser:
+
+| Address | Purpose |
+|---|---|
+| `http://localhost/security` | Integrated Security Workspace and reproducible before/after proof |
+| `http://localhost/duels` | Adversarial duel arena |
+| `http://localhost/scenarios` | Scenario management |
+| `http://localhost/promptfoo` | Promptfoo export interface |
+| `http://localhost/api/security/demo` | Machine-readable deterministic proof |
+| `http://localhost/api/health` | Runtime service health |
+
+If port 80 is occupied, set `APP_PORT=8080` in `.env` and use `http://localhost:8080`.
+
+## Reproduce the security results
+
+The deterministic proof does not require any external model key:
+
+```powershell
+docker compose run --rm laravel.test php artisan arena:demo-security --json
+```
+
+Expected result:
+
+- Vulnerable version: two failed adversarial cases.
+- Remediated version: zero failed cases.
+- Benign pass rate: preserved at 100%.
+- A stable `corpus_hash` identifying the exact test input.
+
+To reproduce it visually:
+
+1. Open `http://localhost/security`.
+2. Confirm the Before/After panel reports `2` failures before and `0` afterward.
+3. Confirm **Benign preserved** reports `YES`.
+4. Select **Analyze sample path** to expose the untrusted-input-to-sensitive-data path.
+5. Select **Analyze with controls** to compare the reduced risk and recommended controls.
+
+To exercise a real model, add `GROQ_API_KEY`, open `/duels`, select a scenario, policy, and model, then run the duel. GPT-5.6 remediation generation additionally needs `OPENAI_API_KEY`; without it the review workflow uses its deterministic fallback.
+
+## One-command testing workflow
+
+The repository includes [scripts/test-workflow.ps1](scripts/test-workflow.ps1). It starts the stack, applies migrations, runs Composer validation and audit, executes every automated test, validates the deterministic security proof, and smoke-tests the live HTTP endpoints.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\test-workflow.ps1
+```
+
+Use `-BuildImages` after changing a Dockerfile or container dependency:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\test-workflow.ps1 -BuildImages
+```
+
+Detailed expected results, manual test cases, and troubleshooting are in [docs/TESTING.md](docs/TESTING.md).
+
+## Manual setup commands
 
 ```bash
 cp .env.example .env
@@ -40,13 +134,6 @@ docker compose exec laravel.test php artisan key:generate
 docker compose exec laravel.test php artisan migrate
 docker compose exec laravel.test php artisan db:seed
 ```
-
-Open:
-
-- `http://localhost/security` — integrated Security Workspace
-- `http://localhost/duels` — adversarial duel arena
-- `http://localhost/scenarios` — scenario management
-- `http://localhost/promptfoo` — legacy Promptfoo export
 
 To run the local compatible guardrail adapters:
 
@@ -83,7 +170,7 @@ php artisan arena:security-gate <run-uuid> --json
 php artisan test
 ```
 
-The GitHub Actions workflow runs the Laravel suite plus the deterministic proof. Runtime thresholds are configured with:
+The **AI security gate** GitHub Actions workflow runs for pull requests and pushes to `main`, and can be started manually from the Actions tab. Runtime thresholds are configured with:
 
 ```dotenv
 SECURITY_CI_MAX_FAILED_CASES=0
@@ -92,7 +179,7 @@ SECURITY_CI_MAX_CRITICAL_FINDINGS=0
 
 ## GPT-5.6 advisor
 
-The advisor is optional. Add an OpenAI API key and keep proposals subject to review:
+The advisor is optional:
 
 ```dotenv
 OPENAI_API_KEY=
