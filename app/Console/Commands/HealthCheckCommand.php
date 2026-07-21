@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 class HealthCheckCommand extends Command
 {
     protected $signature   = 'arena:health';
-    protected $description = 'Check the health of all Red-Team Arena services (NeMo Guardrails, LLM Guard, Groq API)';
+    protected $description = 'Check the health of all Red-Team Arena services (NeMo Guardrails, LLM Guard, OpenAI API)';
 
     public function handle(): int
     {
@@ -35,7 +35,7 @@ class HealthCheckCommand extends Command
         }
 
         // ── LLM Guard ────────────────────────────────────────────────────
-        $guardUrl = config('services.llm_guard.url', 'http://llm-guard:8001');
+        $guardUrl = config('services.llm_guard.url', 'http://llm-guard:8000');
         try {
             $response = Http::timeout(3)->get("{$guardUrl}/healthz");
             if ($response->successful()) {
@@ -49,25 +49,25 @@ class HealthCheckCommand extends Command
             $allHealthy = false;
         }
 
-        // ── Groq API ─────────────────────────────────────────────────────
-        $groqKey = config('prism.providers.groq.api_key');
-        if (empty($groqKey)) {
-            $this->line('  ❌  Groq API            No GROQ_API_KEY configured');
+        // ── OpenAI API ───────────────────────────────────────────────────
+        $openaiKey = config('prism.providers.openai.api_key');
+        if (empty($openaiKey) || !str_starts_with($openaiKey, 'sk-')) {
+            $this->line('  ❌  OpenAI API          No OPENAI_API_KEY configured');
             $allHealthy = false;
         } else {
             try {
                 $response = Http::timeout(5)
-                    ->withHeaders(['Authorization' => "Bearer {$groqKey}"])
-                    ->get('https://api.groq.com/openai/v1/models');
+                    ->withHeaders(['Authorization' => "Bearer {$openaiKey}"])
+                    ->get('https://api.openai.com/v1/models');
                 if ($response->successful()) {
-                    $models = collect($response->json('data', []))->pluck('id')->take(3)->join(', ');
-                    $this->line('  ✅  Groq API            Connected (' . $models . '...)');
+                    $models = collect($response->json('data', []))->pluck('id')->filter(fn($id) => str_starts_with($id, 'gpt'))->take(3)->join(', ');
+                    $this->line('  ✅  OpenAI API          Connected (' . $models . '...)');
                 } else {
-                    $this->line('  ⚠️  Groq API            HTTP ' . $response->status());
+                    $this->line('  ⚠️  OpenAI API          HTTP ' . $response->status());
                     $allHealthy = false;
                 }
             } catch (\Exception $e) {
-                $this->line('  ❌  Groq API            ' . $e->getMessage());
+                $this->line('  ❌  OpenAI API          ' . $e->getMessage());
                 $allHealthy = false;
             }
         }

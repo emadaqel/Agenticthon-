@@ -41,11 +41,15 @@ return [
     ],
 
     'llm_guard' => [
-        'url' => env('LLM_GUARD_URL', 'http://llm-guard:8001'),
+        'url' => env('LLM_GUARD_URL', 'http://llm-guard:8000'),
     ],
 
     'huggingface' => [
         'api_key' => env('HUGGINGFACE_API_KEY', ''),
+    ],
+
+    'promptfoo' => [
+        'url' => env('PROMPTFOO_URL', 'http://localhost:15500'),
     ],
 
 ];
