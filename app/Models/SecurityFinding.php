@@ -2,24 +2,21 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\Concerns\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SecurityFinding extends Model
 {
-    use HasUuids;
+    use HasUuidPrimaryKey;
 
     protected $fillable = [
         'prompt_corpus_run_id', 'prompt_case_result_id', 'title', 'category', 'severity',
         'status', 'description', 'exploit_chain', 'evidence',
     ];
 
-    protected function casts(): array
-    {
-        return ['exploit_chain' => 'array', 'evidence' => 'array'];
-    }
+    protected $casts = ['exploit_chain' => 'array', 'evidence' => 'array'];
 
     public function run(): BelongsTo
     {

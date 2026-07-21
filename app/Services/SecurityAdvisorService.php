@@ -4,12 +4,11 @@ namespace App\Services;
 
 use App\Models\RemediationProposal;
 use App\Models\SecurityFinding;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\ValueObjects\Messages\SystemMessage;
-use Prism\Prism\ValueObjects\Messages\UserMessage;
 
 class SecurityAdvisorService
 {
+    public function __construct(private LlmClient $llm) {}
+
     public function propose(SecurityFinding $finding): RemediationProposal
     {
         $provider = config('security.advisor.provider', 'openai');
@@ -19,18 +18,14 @@ class SecurityAdvisorService
 
         if (config('security.advisor.enabled', true) && config("prism.providers.{$provider}.api_key")) {
             try {
-                $response = Prism::text()
-                    ->using($provider, $model)
-                    ->withMessages([
-                        new SystemMessage($this->systemPrompt()),
-                        new UserMessage(json_encode($finding->only([
-                            'title', 'category', 'severity', 'description', 'exploit_chain', 'evidence',
-                        ]), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)),
-                    ])
-                    ->withMaxTokens(1400)
-                    ->generate();
+                $response = $this->llm->generate($provider, $model, [
+                    ['role' => 'system', 'content' => $this->systemPrompt()],
+                    ['role' => 'user', 'content' => json_encode($finding->only([
+                        'title', 'category', 'severity', 'description', 'exploit_chain', 'evidence',
+                    ]), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)],
+                ], 1400);
 
-                $decoded = json_decode(trim(preg_replace('/```(?:json)?|```/', '', $response->text)), true, 512, JSON_THROW_ON_ERROR);
+                $decoded = json_decode(trim(preg_replace('/```(?:json)?|```/', '', $response['text'])), true, 512, JSON_THROW_ON_ERROR);
                 if ($this->valid($decoded)) {
                     $proposal = $decoded;
                     $mode = 'model_generated';

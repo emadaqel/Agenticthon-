@@ -20,17 +20,20 @@ The script stops immediately when a step fails. It verifies:
 
 1. Docker Compose configuration.
 2. PostgreSQL, Redis, Laravel, and both compatible guardrail adapters start.
-3. Database migrations apply successfully.
-4. `composer.json` and `composer.lock` are valid and have no known advisories.
-5. The complete Laravel test suite passes.
-6. The deterministic proof moves from two failures to zero.
-7. Benign behavior remains successful.
-8. `/security` responds with HTTP 200.
-9. Both guardrail health endpoints identify `arena-rules-v2`.
+3. Composer and npm lock files install, and the production frontend bundle builds.
+4. Database migrations apply successfully.
+5. `composer.json` and `composer.lock` are valid, and the known Laravel 8 EOL advisories are printed explicitly.
+6. The complete Laravel test suite passes.
+7. The deterministic proof moves from two failures to zero.
+8. Benign behavior remains successful.
+9. `/security` responds with HTTP 200.
+10. Both guardrail health endpoints identify `arena-rules-v2`.
 
 ## Expected automated result
 
-The current baseline is 17 passing tests with 81 assertions. The exact assertion count may increase as coverage is added, but no failures, warnings, or dependency advisories are expected.
+The current baseline is 20 passing tests with 89 assertions. It includes direct coverage of the OpenAI Responses API adapter, OpenAI-compatible chat completions, provider errors, the security workspace, corpus imports, evidence generation, remediation review, and attack-path analysis.
+
+No functional test failures or application-runtime PHP compatibility warnings are expected. Composer can print PHP 8.5 deprecation notices while its own process autoloads Laravel 8 helper functions; those notices are an expected consequence of the unsupported version pairing and do not appear during the application boot or test suite. Composer audit is expected to return exit code `1` and report three Laravel framework advisories (one high severity and two medium severity) because this branch intentionally pins the end-of-life Laravel 8.83.29 release. The workflow reports that result and continues with the functional gates.
 
 ## Manual test cases
 
@@ -79,7 +82,7 @@ Expected: every proposal starts as `pending_review`. It can transition once to `
 
 ## GitHub Actions
 
-The **AI security gate** workflow runs for pull requests, pushes to `main`, or manual dispatch from the Actions tab. It performs Composer validation and auditing, the full test suite, route discovery, and the deterministic proof.
+The **AI security gate** workflow runs for pull requests, pushes to `main`, or manual dispatch from the Actions tab. It uses PHP 8.5, performs Composer validation and an informational audit, then requires the full test suite, route discovery, and deterministic proof to pass.
 
 ## Troubleshooting
 
@@ -89,3 +92,4 @@ The **AI security gate** workflow runs for pull requests, pushes to `main`, or m
 - If port 80 is occupied, set `APP_PORT=8080` and use `http://localhost:8080`.
 - If configuration changes are not visible, run `docker compose exec laravel.test php artisan config:clear`.
 - Live duels require a model-provider key; the deterministic proof and automated test suite do not.
+- The first `-BuildImages` run can take about 10 minutes while the repository-owned PHP 8.5 image is assembled. Later builds should reuse cached layers.

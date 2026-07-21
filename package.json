@@ -1,5 +1,6 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "red-team-arena",
     "private": true,
     "type": "module",
     "scripts": {

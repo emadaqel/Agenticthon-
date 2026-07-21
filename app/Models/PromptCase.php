@@ -2,20 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\Concerns\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PromptCase extends Model
 {
-    use HasUuids;
+    use HasUuidPrimaryKey;
 
     protected $fillable = ['prompt_corpus_id', 'external_id', 'category', 'prompt', 'expected_policy', 'metadata'];
 
-    protected function casts(): array
-    {
-        return ['metadata' => 'array'];
-    }
+    protected $casts = ['metadata' => 'array'];
 
     public function corpus(): BelongsTo
     {

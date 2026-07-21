@@ -12,10 +12,7 @@ class PromptCaseResult extends Model
         'risk_score_input', 'risk_score_output', 'model_response', 'trace',
     ];
 
-    protected function casts(): array
-    {
-        return ['passed' => 'boolean', 'trace' => 'array'];
-    }
+    protected $casts = ['passed' => 'boolean', 'trace' => 'array'];
 
     public function run(): BelongsTo
     {

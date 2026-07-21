@@ -3,46 +3,41 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\ValueObjects\Messages\UserMessage;
-use Prism\Prism\ValueObjects\Messages\SystemMessage;
 
 class ModelGateway
 {
+    public function __construct(private LlmClient $llm) {}
+
     public function call(
         string $prompt,
         string $basePrompt,
         string $targetModel = 'llama-3.1-8b-instant',
-        string $provider    = 'groq',
+        string $provider = 'groq',
     ): array {
         if ($provider === 'huggingface') {
             return $this->callHuggingFace($prompt, $basePrompt, $targetModel);
         }
 
-        return $this->callPrism($prompt, $basePrompt, $targetModel, $provider);
+        return $this->callProvider($prompt, $basePrompt, $targetModel, $provider);
     }
 
-    private function callPrism(string $prompt, string $basePrompt, string $model, string $provider): array
+    private function callProvider(string $prompt, string $basePrompt, string $model, string $provider): array
     {
         $startTime = microtime(true);
 
         try {
-            $response = Prism::text()
-                ->using($provider, $model)
-                ->withMessages([
-                    new SystemMessage($basePrompt),
-                    new UserMessage($prompt),
-                ])
-                ->withMaxTokens(1024)
-                ->generate();
+            $response = $this->llm->generate($provider, $model, [
+                ['role' => 'system', 'content' => $basePrompt],
+                ['role' => 'user', 'content' => $prompt],
+            ], 1024);
 
             return [
-                'response'       => $response->text,
-                'model'          => $model,
-                'provider'       => $provider,
-                'latency_ms'     => (int) ((microtime(true) - $startTime) * 1000),
-                'tokens_input'   => $response->usage->promptTokens ?? 0,
-                'tokens_output'  => $response->usage->completionTokens ?? 0,
+                'response' => $response['text'],
+                'model' => $model,
+                'provider' => $provider,
+                'latency_ms' => (int) ((microtime(true) - $startTime) * 1000),
+                'tokens_input' => $response['tokens_input'],
+                'tokens_output' => $response['tokens_output'],
             ];
         } catch (\Exception $e) {
             return $this->errorResponse($model, $provider, $e->getMessage(), $startTime);
@@ -52,7 +47,7 @@ class ModelGateway
     private function callHuggingFace(string $prompt, string $basePrompt, string $model): array
     {
         $startTime = microtime(true);
-        $apiKey    = config('services.huggingface.api_key', env('HUGGINGFACE_API_KEY', ''));
+        $apiKey = config('services.huggingface.api_key', env('HUGGINGFACE_API_KEY', ''));
 
         if (empty($apiKey)) {
             return $this->errorResponse($model, 'huggingface', 'HUGGINGFACE_API_KEY is not configured.', $startTime);
@@ -61,7 +56,7 @@ class ModelGateway
         // Strip ":provider" suffix to get a bare model ID for serverless fallback.
         // The router expects the FULL name (including suffix) in the payload.
         $hasProviderSuffix = (bool) preg_match('/^(.+):([a-z0-9_-]+)$/i', $model, $m);
-        $bareModelId       = $hasProviderSuffix ? $m[1] : $model;
+        $bareModelId = $hasProviderSuffix ? $m[1] : $model;
 
         $messages = [
             ['role' => 'system', 'content' => $basePrompt],
@@ -76,11 +71,11 @@ class ModelGateway
             $response = Http::withToken($apiKey)
                 ->timeout(90)
                 ->post('https://router.huggingface.co/v1/chat/completions', [
-                    'model'       => $model,
-                    'messages'    => $messages,
-                    'max_tokens'  => 512,
+                    'model' => $model,
+                    'messages' => $messages,
+                    'max_tokens' => 512,
                     'temperature' => 0.7,
-                    'stream'      => false,
+                    'stream' => false,
                 ]);
 
             $latency = (int) ((microtime(true) - $startTime) * 1000);
@@ -90,11 +85,11 @@ class ModelGateway
                 $text = $body['choices'][0]['message']['content'] ?? null;
                 if ($text !== null) {
                     return [
-                        'response'      => trim($text),
-                        'model'         => $model,
-                        'provider'      => 'huggingface',
-                        'latency_ms'    => $latency,
-                        'tokens_input'  => $body['usage']['prompt_tokens'] ?? 0,
+                        'response' => trim($text),
+                        'model' => $model,
+                        'provider' => 'huggingface',
+                        'latency_ms' => $latency,
+                        'tokens_input' => $body['usage']['prompt_tokens'] ?? 0,
                         'tokens_output' => $body['usage']['completion_tokens'] ?? 0,
                     ];
                 }
@@ -105,13 +100,13 @@ class ModelGateway
 
         // ── 2. HF Serverless chat completions (modern instruct models) ────────
         try {
-            $url      = "https://api-inference.huggingface.co/models/{$bareModelId}/v1/chat/completions";
+            $url = "https://api-inference.huggingface.co/models/{$bareModelId}/v1/chat/completions";
             $response = Http::withToken($apiKey)->timeout(60)->post($url, [
-                'model'       => $bareModelId,
-                'messages'    => $messages,
-                'max_tokens'  => 512,
+                'model' => $bareModelId,
+                'messages' => $messages,
+                'max_tokens' => 512,
                 'temperature' => 0.7,
-                'stream'      => false,
+                'stream' => false,
             ]);
 
             $latency = (int) ((microtime(true) - $startTime) * 1000);
@@ -121,11 +116,11 @@ class ModelGateway
                 $text = $body['choices'][0]['message']['content'] ?? null;
                 if ($text !== null) {
                     return [
-                        'response'      => trim($text),
-                        'model'         => $model,
-                        'provider'      => 'huggingface',
-                        'latency_ms'    => $latency,
-                        'tokens_input'  => $body['usage']['prompt_tokens'] ?? 0,
+                        'response' => trim($text),
+                        'model' => $model,
+                        'provider' => 'huggingface',
+                        'latency_ms' => $latency,
+                        'tokens_input' => $body['usage']['prompt_tokens'] ?? 0,
                         'tokens_output' => $body['usage']['completion_tokens'] ?? 0,
                     ];
                 }
@@ -138,7 +133,7 @@ class ModelGateway
         try {
             $response = Http::withToken($apiKey)->timeout(60)
                 ->post("https://api-inference.huggingface.co/models/{$bareModelId}", [
-                    'inputs'     => "System: {$basePrompt}\n\nUser: {$prompt}\n\nAssistant:",
+                    'inputs' => "System: {$basePrompt}\n\nUser: {$prompt}\n\nAssistant:",
                     'parameters' => ['max_new_tokens' => 512, 'temperature' => 0.7, 'return_full_text' => false],
                 ]);
 
@@ -147,17 +142,18 @@ class ModelGateway
             if ($response->successful()) {
                 $body = $response->json();
                 $text = is_array($body) ? ($body[0]['generated_text'] ?? '') : ($body['generated_text'] ?? '');
+
                 return [
-                    'response'      => trim($text) ?: 'No response generated.',
-                    'model'         => $model,
-                    'provider'      => 'huggingface',
-                    'latency_ms'    => $latency,
-                    'tokens_input'  => 0,
+                    'response' => trim($text) ?: 'No response generated.',
+                    'model' => $model,
+                    'provider' => 'huggingface',
+                    'latency_ms' => $latency,
+                    'tokens_input' => 0,
                     'tokens_output' => 0,
                 ];
             }
 
-            return $this->errorResponse($model, 'huggingface', "HF API HTTP {$response->status()}: " . $response->body(), $startTime);
+            return $this->errorResponse($model, 'huggingface', "HF API HTTP {$response->status()}: ".$response->body(), $startTime);
         } catch (\Exception $e) {
             return $this->errorResponse($model, 'huggingface', $e->getMessage(), $startTime);
         }
@@ -166,11 +162,11 @@ class ModelGateway
     private function errorResponse(string $model, string $provider, string $message, float $startTime): array
     {
         return [
-            'response'      => "Error: {$message}",
-            'model'         => $model,
-            'provider'      => $provider,
-            'latency_ms'    => (int) ((microtime(true) - $startTime) * 1000),
-            'tokens_input'  => 0,
+            'response' => "Error: {$message}",
+            'model' => $model,
+            'provider' => $provider,
+            'latency_ms' => (int) ((microtime(true) - $startTime) * 1000),
+            'tokens_input' => 0,
             'tokens_output' => 0,
         ];
     }

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -e
+
+if [ "$SUPERVISOR_PHP_USER" != "root" ] && [ "$SUPERVISOR_PHP_USER" != "sail" ]; then
+    echo "SUPERVISOR_PHP_USER must be either 'sail' or 'root'."
+    exit 1
+fi
+
+if [ -n "$WWWUSER" ]; then
+    usermod -u "$WWWUSER" sail
+fi
+
+gosu sail git config --global --add safe.directory /var/www/html
+
+mkdir -p /.composer
+chmod -R ugo+rw /.composer
+
+if [ "$#" -gt 0 ]; then
+    if [ "$SUPERVISOR_PHP_USER" = "root" ]; then
+        exec "$@"
+    fi
+
+    exec gosu "${WWWUSER:-sail}" "$@"
+fi
+
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

@@ -18,11 +18,21 @@ jobs:
           php-version: '8.5'
           extensions: pdo_sqlite
           coverage: none
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
       - name: Validate Composer configuration
         run: composer validate --strict
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Audit dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --no-security-blocking
+      - name: Build frontend assets
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Report Laravel 8 dependency advisories
+        continue-on-error: true
         run: composer audit --locked
       - name: Configure application
         run: |

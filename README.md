@@ -17,6 +17,12 @@ Red-Team Arena is an agentic AI security validation platform. It runs adversaria
 
 The optional Docker guardrail service is a lightweight, local rule engine exposing NeMo-compatible and LLM Guard-compatible HTTP surfaces. It does **not** bundle the upstream NeMo Guardrails or LLM Guard packages. Health responses expose `engine: arena-rules-v2` and `upstream_package: false`.
 
+## Runtime compatibility and security notice
+
+This branch intentionally targets **Laravel 8.83.29 on PHP 8.5**. Laravel 8 is end-of-life and this PHP pairing is not supported by the Laravel project. The repository includes an application-owned compatibility bootstrap and a pinned PHP 8.5 Docker runtime so the combination remains reproducible.
+
+As of July 22, 2026, `composer audit --locked` reports three Laravel framework advisories: one high-severity and two medium-severity advisories. Fruitcake CORS and SwiftMailer are also abandoned. The local workflow and CI display those results but do not fail solely on the audit exit code because Laravel 8 has no patched release. Do not expose this branch directly to untrusted production traffic; upgrading the framework is the correct security remediation.
+
 ## Architecture
 
 ```text
@@ -37,6 +43,7 @@ Agent graph -> reachable sensitive paths -> risk score -> least-privilege contro
 
 - Docker Desktop with Docker Compose enabled.
 - Git.
+- Approximately 10 minutes for the first PHP 8.5 image build; later builds use Docker's cache.
 - Free host ports `80`, `5432`, `6379`, `8000`, `8001`, and `5173`.
 - A Groq API key for live duels. OpenAI and Hugging Face keys are optional.
 
@@ -57,19 +64,27 @@ OPENAI_API_KEY=
 HUGGINGFACE_API_KEY=
 ```
 
-Start and initialize the application:
+Build the pinned runtime, install the approved Laravel 8 dependency graph, then initialize the application:
 
 ```powershell
-docker compose up -d --build
+docker compose build laravel.test
+docker compose run --rm --no-deps laravel.test composer install --no-interaction --prefer-dist --no-progress --no-security-blocking
+docker compose run --rm --no-deps laravel.test npm ci --no-audit --no-fund
+docker compose run --rm --no-deps laravel.test npm run build
+docker compose up -d
 docker compose exec laravel.test php artisan key:generate
 docker compose exec laravel.test php artisan migrate --seed
 ```
 
-The first build can take several minutes. Confirm the containers with:
+The `--no-security-blocking` flag is intentional for this EOL framework branch and does not hide the later audit report. Confirm the runtime and containers with:
 
 ```powershell
+docker compose exec laravel.test php -v
+docker compose exec laravel.test php artisan --version
 docker compose ps
 ```
+
+Expected versions are PHP `8.5.x` and Laravel Framework `8.83.29`.
 
 Open these addresses in a browser:
 
@@ -111,7 +126,7 @@ To exercise a real model, add `GROQ_API_KEY`, open `/duels`, select a scenario, 
 
 ## One-command testing workflow
 
-The repository includes [scripts/test-workflow.ps1](scripts/test-workflow.ps1). It starts the stack, applies migrations, runs Composer validation and audit, executes every automated test, validates the deterministic security proof, and smoke-tests the live HTTP endpoints.
+The repository includes [scripts/test-workflow.ps1](scripts/test-workflow.ps1). It builds the pinned runtime, installs the Composer and npm lock files, builds production assets, starts the stack, applies migrations, reports Composer advisories, executes every automated test, validates the deterministic security proof, and smoke-tests the live HTTP endpoints.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\test-workflow.ps1
@@ -170,7 +185,7 @@ php artisan arena:security-gate <run-uuid> --json
 php artisan test
 ```
 
-The **AI security gate** GitHub Actions workflow runs for pull requests and pushes to `main`, and can be started manually from the Actions tab. Runtime thresholds are configured with:
+The **AI security gate** GitHub Actions workflow runs for pull requests and pushes to `main`, and can be started manually from the Actions tab. Its Composer audit step is informational for the documented Laravel 8 advisories; functional and deterministic security tests remain required. Runtime thresholds are configured with:
 
 ```dotenv
 SECURITY_CI_MAX_FAILED_CASES=0
@@ -208,7 +223,7 @@ Mutation endpoints are CSRF-protected and rate-limited. Public deployments shoul
 
 ## Stack
 
-Laravel 12, PHP 8.2+, PostgreSQL, Redis, Prism PHP, Groq/OpenAI/Hugging Face providers, and Docker Compose.
+Laravel 8.83.29, PHP 8.5, PostgreSQL, Redis, a Laravel HTTP-client LLM adapter for Groq/OpenAI-compatible endpoints, Hugging Face support, and Docker Compose.
 
 ## License
 

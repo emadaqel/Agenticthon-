@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\Concerns\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 
 class Scenario extends Model
 {
-    use HasUuids;
+    use HasUuidPrimaryKey;
 
     protected $fillable = [
         'category',
