@@ -22,7 +22,7 @@ class LlmGuardService
 
     public function __construct()
     {
-        $this->baseUrl = config('services.llm_guard.url', env('LLM_GUARD_URL', 'http://llm-guard:8001'));
+        $this->baseUrl = config('services.llm_guard.url', env('LLM_GUARD_URL', 'http://llm-guard:8000'));
         $this->timeout = 2;
     }
 

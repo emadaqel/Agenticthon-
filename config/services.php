@@ -41,7 +41,7 @@ return [
     ],
 
     'llm_guard' => [
-        'url' => env('LLM_GUARD_URL', 'http://llm-guard:8001'),
+        'url' => env('LLM_GUARD_URL', 'http://llm-guard:8000'),
     ],
 
     'huggingface' => [

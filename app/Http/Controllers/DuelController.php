@@ -39,13 +39,20 @@ class DuelController extends Controller
     // ─── POST /duels/{scenario}/run ────────────────────────────────────────────
     public function run(Request $request, Scenario $scenario)
     {
-        $maxTurns      = (int) $request->input('max_turns', 3);
-        $policyProfile = $request->input('policy_profile', 'strict');
-        $rawModel      = $request->input('target_model', 'llama-3.1-8b-instant');
-        $rawProvider   = $request->input('provider', 'groq');
+        $data = $request->validate([
+            'max_turns' => ['nullable', 'integer', 'min:1', 'max:10'],
+            'policy_profile' => ['nullable', 'in:strict,moderate,permissive'],
+            'target_model' => ['nullable', 'string', 'max:200'],
+            'provider' => ['nullable', 'in:groq,openai,huggingface'],
+            'async' => ['nullable', 'boolean'],
+        ]);
+        $maxTurns      = (int) ($data['max_turns'] ?? 3);
+        $policyProfile = $data['policy_profile'] ?? 'strict';
+        $rawModel      = $data['target_model'] ?? 'llama-3.1-8b-instant';
+        $rawProvider   = $data['provider'] ?? 'groq';
 
         [$targetModel, $provider] = $this->resolveModelAndProvider($rawModel, $rawProvider);
-        $async         = filter_var($request->input('async', false), FILTER_VALIDATE_BOOLEAN);
+        $async         = (bool) ($data['async'] ?? false);
 
         $duelId = (string) Str::uuid();
 
@@ -83,8 +90,8 @@ class DuelController extends Controller
             $adversarialPrompt = $attack['prompt'] ?? '';
 
             // 2 ── Guardrail: check input
-            $nemoInputResult  = $this->nemo->checkInput($adversarialPrompt);
-            $guardInputResult = $this->llmGuard->scanInput($adversarialPrompt);
+            $nemoInputResult  = $this->nemo->checkInput($adversarialPrompt, $policyProfile);
+            $guardInputResult = $this->llmGuard->scanInput($adversarialPrompt, $policyProfile);
 
             // If input blocked by NeMo → blue win, skip to next turn
             if ($nemoInputResult['blocked'] ?? false) {
@@ -102,8 +109,8 @@ class DuelController extends Controller
             $modelResult = $this->gateway->call($adversarialPrompt, $scenario->base_prompt, $targetModel, $provider);
 
             // 4 ── Guardrail: check output
-            $nemoOutputResult  = $this->nemo->checkOutput($modelResult['response']);
-            $guardOutputResult = $this->llmGuard->scanOutput($modelResult['response']);
+            $nemoOutputResult  = $this->nemo->checkOutput($modelResult['response'], $policyProfile);
+            $guardOutputResult = $this->llmGuard->scanOutput($modelResult['response'], $policyProfile);
 
             // 5 ── Defender evaluates
             $defenseResult = $this->defender->evaluate(
@@ -228,10 +235,17 @@ class DuelController extends Controller
     // ─── POST /duels/{scenario}/compare ──────────────────────────────────────
     public function compare(Request $request, Scenario $scenario)
     {
-        $models        = $request->input('models', ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile']);
-        $policyProfile = $request->input('policy_profile', 'strict');
-        $maxTurns      = (int) $request->input('max_turns', 3);
-        $defaultProvider = $request->input('provider', 'groq');
+        $data = $request->validate([
+            'models' => ['nullable', 'array', 'min:1', 'max:5'],
+            'models.*' => ['string', 'max:200', 'distinct'],
+            'policy_profile' => ['nullable', 'in:strict,moderate,permissive'],
+            'max_turns' => ['nullable', 'integer', 'min:1', 'max:10'],
+            'provider' => ['nullable', 'in:groq,openai,huggingface'],
+        ]);
+        $models = $data['models'] ?? ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'];
+        $policyProfile = $data['policy_profile'] ?? 'strict';
+        $maxTurns = (int) ($data['max_turns'] ?? 3);
+        $defaultProvider = $data['provider'] ?? 'groq';
 
         $results = [];
 
@@ -247,8 +261,8 @@ class DuelController extends Controller
                 $attack           = $this->attacker->generate($scenario, $history);
                 $adversarialPrompt = $attack['prompt'] ?? '';
 
-                $nemoInputResult  = $this->nemo->checkInput($adversarialPrompt);
-                $guardInputResult = $this->llmGuard->scanInput($adversarialPrompt);
+                $nemoInputResult  = $this->nemo->checkInput($adversarialPrompt, $policyProfile);
+                $guardInputResult = $this->llmGuard->scanInput($adversarialPrompt, $policyProfile);
 
                 if ($nemoInputResult['blocked'] ?? false) {
                     $turnRecord = $this->buildTurnRecord($duelId, $scenario->id, $i, $attack, $guardInputResult, $nemoInputResult, '—BLOCKED—', ['risk_score' => 1.0], ['blocked' => true], 'BLOCK', 0, $policyProfile);
@@ -260,8 +274,8 @@ class DuelController extends Controller
                 }
 
                 $modelResult      = $this->gateway->call($adversarialPrompt, $scenario->base_prompt, $modelId, $provider);
-                $nemoOutputResult = $this->nemo->checkOutput($modelResult['response']);
-                $guardOutputResult= $this->llmGuard->scanOutput($modelResult['response']);
+                $nemoOutputResult = $this->nemo->checkOutput($modelResult['response'], $policyProfile);
+                $guardOutputResult= $this->llmGuard->scanOutput($modelResult['response'], $policyProfile);
                 $defenseResult    = $this->defender->evaluate($adversarialPrompt, $guardInputResult, $modelResult['response'], $guardOutputResult, $policyProfile);
                 $judgeResult      = $this->judge->scoreTurn(array_merge($attack, ['model_response' => $modelResult['response'], 'defender_verdict' => $defenseResult['verdict'] ?? 'BLOCK']));
 

@@ -10,19 +10,21 @@ class HealthController extends Controller
     public function check(): JsonResponse
     {
         $nemoUrl  = config('services.nemo_guardrails.url', 'http://nemo-guardrails:8000');
-        $guardUrl = config('services.llm_guard.url', 'http://llm-guard:8001');
+        $guardUrl = config('services.llm_guard.url', 'http://llm-guard:8000');
         $groqKey  = config('prism.providers.groq.api_key', '');
         $hfKey    = config('services.huggingface.api_key', '');
 
         return response()->json([
             'services' => [
                 'nemo_guardrails' => [
-                    'name'   => 'NeMo Guardrails',
+                    'name'   => 'NeMo-compatible rule engine',
+                    'engine' => 'arena-rules-v2',
                     'status' => $this->ping($nemoUrl . '/v1/health'),
                     'url'    => $nemoUrl,
                 ],
                 'llm_guard' => [
-                    'name'   => 'LLM Guard',
+                    'name'   => 'LLM Guard-compatible scanner',
+                    'engine' => 'arena-rules-v2',
                     'status' => $this->ping($guardUrl . '/health'),
                     'url'    => $guardUrl,
                 ],

@@ -3,103 +3,91 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redis;
 
 class HealthCheckCommand extends Command
 {
-    protected $signature   = 'arena:health';
-    protected $description = 'Check the health of all Red-Team Arena services (NeMo Guardrails, LLM Guard, Groq API)';
+    protected $signature = 'arena:health';
+
+    protected $description = 'Check rule adapters, model provider, database, and cache';
 
     public function handle(): int
     {
-        $this->info('');
-        $this->info('⚔  Red-Team Arena — Service Health Check');
-        $this->line('─────────────────────────────────────────');
-        $this->info('');
+        $this->newLine();
+        $this->info('Red-Team Arena — Service Health Check');
+        $this->line(str_repeat('─', 42));
 
-        $allHealthy = true;
+        $healthy = true;
+        $healthy = $this->probe(
+            'NeMo-compatible adapter',
+            config('services.nemo_guardrails.url', 'http://nemo-guardrails:8000').'/v1/health'
+        ) && $healthy;
+        $healthy = $this->probe(
+            'LLM Guard-compatible adapter',
+            config('services.llm_guard.url', 'http://llm-guard:8000').'/health'
+        ) && $healthy;
 
-        // ── NeMo Guardrails ──────────────────────────────────────────────
-        $nemoUrl = config('services.nemo_guardrails.url', 'http://nemo-guardrails:8000');
-        try {
-            $response = Http::timeout(3)->get("{$nemoUrl}/v1/rails/configs");
-            if ($response->successful()) {
-                $this->line('  ✅  NeMo Guardrails    ' . $nemoUrl);
-            } else {
-                $this->line('  ⚠️  NeMo Guardrails    ' . $nemoUrl . ' (HTTP ' . $response->status() . ')');
-                $allHealthy = false;
-            }
-        } catch (\Exception $e) {
-            $this->line('  ❌  NeMo Guardrails    ' . $nemoUrl . ' — ' . $e->getMessage());
-            $allHealthy = false;
-        }
-
-        // ── LLM Guard ────────────────────────────────────────────────────
-        $guardUrl = config('services.llm_guard.url', 'http://llm-guard:8001');
-        try {
-            $response = Http::timeout(3)->get("{$guardUrl}/healthz");
-            if ($response->successful()) {
-                $this->line('  ✅  LLM Guard          ' . $guardUrl);
-            } else {
-                $this->line('  ⚠️  LLM Guard          ' . $guardUrl . ' (HTTP ' . $response->status() . ')');
-                $allHealthy = false;
-            }
-        } catch (\Exception $e) {
-            $this->line('  ❌  LLM Guard          ' . $guardUrl . ' — ' . $e->getMessage());
-            $allHealthy = false;
-        }
-
-        // ── Groq API ─────────────────────────────────────────────────────
         $groqKey = config('prism.providers.groq.api_key');
         if (empty($groqKey)) {
-            $this->line('  ❌  Groq API            No GROQ_API_KEY configured');
-            $allHealthy = false;
+            $this->components->warn('Groq API: not configured (duels need a model-provider key)');
+            $healthy = false;
         } else {
             try {
                 $response = Http::timeout(5)
-                    ->withHeaders(['Authorization' => "Bearer {$groqKey}"])
+                    ->withToken($groqKey)
                     ->get('https://api.groq.com/openai/v1/models');
-                if ($response->successful()) {
-                    $models = collect($response->json('data', []))->pluck('id')->take(3)->join(', ');
-                    $this->line('  ✅  Groq API            Connected (' . $models . '...)');
-                } else {
-                    $this->line('  ⚠️  Groq API            HTTP ' . $response->status());
-                    $allHealthy = false;
-                }
-            } catch (\Exception $e) {
-                $this->line('  ❌  Groq API            ' . $e->getMessage());
-                $allHealthy = false;
+                $this->components->{$response->successful() ? 'info' : 'error'}('Groq API: HTTP '.$response->status());
+                $healthy = $response->successful() && $healthy;
+            } catch (\Throwable $exception) {
+                $this->components->error('Groq API: '.$exception->getMessage());
+                $healthy = false;
             }
         }
 
-        // ── PostgreSQL ───────────────────────────────────────────────────
         try {
-            \DB::connection()->getPdo();
-            $this->line('  ✅  PostgreSQL          ' . config('database.connections.pgsql.host', 'localhost'));
-        } catch (\Exception $e) {
-            $this->line('  ❌  PostgreSQL          ' . $e->getMessage());
-            $allHealthy = false;
+            DB::connection()->getPdo();
+            $this->components->info('PostgreSQL: online');
+        } catch (\Throwable $exception) {
+            $this->components->error('PostgreSQL: '.$exception->getMessage());
+            $healthy = false;
         }
 
-        // ── Redis ────────────────────────────────────────────────────────
         try {
-            \Illuminate\Support\Facades\Redis::ping();
-            $this->line('  ✅  Redis               ' . config('database.redis.default.host', 'localhost'));
-        } catch (\Exception $e) {
-            $this->line('  ❌  Redis               ' . $e->getMessage());
-            $allHealthy = false;
+            Redis::ping();
+            $this->components->info('Redis: online');
+        } catch (\Throwable $exception) {
+            $this->components->error('Redis: '.$exception->getMessage());
+            $healthy = false;
         }
 
-        $this->info('');
-        $this->line('─────────────────────────────────────────');
-        if ($allHealthy) {
-            $this->info('  All services healthy. Ready to duel! ⚡');
+        $this->newLine();
+        if ($healthy) {
+            $this->info('All configured services are ready.');
         } else {
-            $this->warn('  Some services are unavailable. Duels will run in degraded mode.');
-            $this->line('  Tip: Start guardrails with: docker compose --profile guardrails up -d');
+            $this->warn('One or more services need attention.');
+            $this->line('Start adapters: docker compose up -d nemo-guardrails llm-guard');
         }
-        $this->info('');
 
-        return $allHealthy ? self::SUCCESS : self::FAILURE;
+        return $healthy ? self::SUCCESS : self::FAILURE;
+    }
+
+    private function probe(string $name, string $url): bool
+    {
+        try {
+            $response = Http::timeout(3)->get($url);
+            if ($response->successful()) {
+                $engine = $response->json('engine', 'unknown-engine');
+                $this->components->info("{$name}: online ({$engine})");
+                return true;
+            }
+
+            $this->components->error("{$name}: HTTP {$response->status()}");
+        } catch (\Throwable $exception) {
+            $this->components->error("{$name}: {$exception->getMessage()}");
+        }
+
+        return false;
     }
 }

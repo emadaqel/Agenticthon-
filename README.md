@@ -1,114 +1,127 @@
-# ⚔ Red-Team Arena
+# Red-Team Arena
 
-> Autonomous Multi-Agent Adversarial Simulation Platform for LLM Safety Testing
+Red-Team Arena is an agentic AI security validation platform. It runs adversarial duels, imports versioned prompt corpora, traces model-to-tool attack paths, turns failures into reviewable remediation proposals, and produces evidence that can gate a release.
 
-Red-Team Arena pits a **Red Team Attacker** against a **Blue Team Defender** in real-time AI duels, with a **Policy Judge** referee scoring every turn against the **OWASP LLM Top 10**.
+## What is implemented
+
+- Red/blue multi-agent duels with strict, moderate, and permissive policy profiles.
+- Versioned Promptfoo YAML or JSON corpus import from allow-listed GitHub sources.
+- Reproducible corpus runs pinned to a SHA-256 content fingerprint.
+- Per-case traces covering input scanning, target response, output scanning, defense, and judging.
+- Structured findings with exploit chain, evidence, severity, and OWASP mapping.
+- GPT-5.6 security-advisor proposals when configured, with a deterministic fallback.
+- Mandatory human approval or rejection for every remediation proposal.
+- Model/tool/data attack-path analysis with least-privilege and approval recommendations.
+- A deterministic vulnerable-versus-remediated demo and CI security gate.
+- Truthful evidence states: `effective`, `bypassed`, `not_triggered`, `unavailable`, and `not_evaluated`.
+
+The optional Docker guardrail service is a lightweight, local rule engine exposing NeMo-compatible and LLM Guard-compatible HTTP surfaces. It does **not** bundle the upstream NeMo Guardrails or LLM Guard packages. Health responses expose `engine: arena-rules-v2` and `upstream_package: false` so reports do not overstate the control in use.
 
 ## Architecture
 
+```text
+GitHub corpus -> fingerprinted run -> input controls -> target model -> output controls
+                                            |                              |
+                                            +------ full case trace -------+
+                                                              |
+                                         findings -> advisor proposal -> human review
+                                                              |
+                                                  evidence report -> CI gate
+
+Agent graph -> reachable sensitive paths -> risk score -> least-privilege controls
 ```
-┌──────────────┐     ┌────────────────┐     ┌──────────────────┐
-│  Attacker    │────▶│  NeMo + LLM    │────▶│   Target Model   │
-│  Agent (Red) │     │  Guard (Input) │     │   (Groq LLM)     │
-└──────────────┘     └────────────────┘     └────────┬─────────┘
-                                                      │
-┌──────────────┐     ┌────────────────┐     ┌────────▼─────────┐
-│ Policy Judge │◀────│   Defender     │◀────│  NeMo + LLM      │
-│  (Referee)   │     │  Agent (Blue)  │     │  Guard (Output)  │
-└──────────────┘     └────────────────┘     └──────────────────┘
-```
 
-## Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Backend | Laravel 11 (PHP 8.2+) |
-| AI SDK | Prism PHP v0.100.1 |
-| LLM Provider | Groq (llama3-70b-8192 / llama3-8b-8192) |
-| Database | PostgreSQL |
-| Cache/Queue | Redis |
-| Guardrails | NeMo Guardrails + LLM Guard |
-| Frontend | Alpine.js + Vanilla CSS |
-| Infrastructure | Docker (Laravel Sail) |
-
-## Quick Start
+## Quick start
 
 ```bash
-# 1. Clone and install
-git clone <repo-url>
-cd Agenticthon-
 cp .env.example .env
-
-# 2. Set your Groq API key in .env
-# GROQ_API_KEY=your-key-here
-
-# 3. Start with Docker Sail
 docker compose up -d
-
-# 4. Setup application
 docker compose exec laravel.test php artisan key:generate
 docker compose exec laravel.test php artisan migrate
 docker compose exec laravel.test php artisan db:seed
-
-# 5. Open http://localhost
 ```
 
-### Optional: Enable Guardrails (Phase 2)
+Open:
+
+- `http://localhost/security` — integrated Security Workspace
+- `http://localhost/duels` — adversarial duel arena
+- `http://localhost/scenarios` — scenario management
+- `http://localhost/promptfoo` — legacy Promptfoo export
+
+To run the local compatible guardrail adapters:
+
 ```bash
-docker compose --profile guardrails up -d
+docker compose up -d nemo-guardrails llm-guard
 docker compose exec laravel.test php artisan config:clear
-```
-
-### Health Check
-```bash
 docker compose exec laravel.test php artisan arena:health
 ```
 
-## Agent Roster
+Inside Docker, both adapter URLs use port `8000`; the LLM Guard-compatible host port is `8001`.
 
-### 🗡️ AttackerAgent
-- **10 attack techniques**: jailbreak, role-play, injection, obfuscation, translation bypass, and more
-- **Adaptive intelligence**: tracks technique effectiveness, rotates blocked families, escalates on block
+## Security workflow
 
-### 🛡️ DefenderAgent
-- **3 policy profiles**: strict (0.3), moderate (0.6), permissive (0.85)
-- **Programmatic + LLM reasoning**: hard thresholds enforced before LLM evaluation
+Import a public corpus through the workspace or API:
 
-### ⚖️ PolicyJudgeAgent
-- **Turn scoring**: red_team_win, blue_team_win, draw, false_positive
-- **OWASP mapping**: LLM01, LLM02, LLM04, LLM06, LLM08, LLM09
+```http
+POST /api/corpora
+Content-Type: application/json
 
-## Scenarios
+{
+  "name": "OWASP agent prompts",
+  "source_url": "https://raw.githubusercontent.com/org/repo/main/prompts.yaml",
+  "source_ref": "main"
+}
+```
 
-| # | Category | Severity | Techniques |
-|---|----------|----------|-----------|
-| 1 | Jailbreak | CRITICAL | role_play_framing, authority_impersonation |
-| 2 | Self-Harm | CRITICAL | hypothetical_framing, multi_turn_escalation |
-| 3 | PII Leakage | CRITICAL | indirect_injection, obfuscation |
-| 4 | Toxicity | HIGH | translation_bypass, token_smuggling |
-| 5 | Prompt Injection | HIGH | direct_jailbreak, many_shot_priming |
-| 6 | Model Spec Violation | MEDIUM | direct_jailbreak, hypothetical_framing |
+Run it against an existing scenario, materialize findings, request a remediation proposal, then approve or reject it explicitly. The API never applies a proposed control automatically.
 
-## API Endpoints
+Useful commands:
 
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/` | GET | Landing page |
-| `/duels` | GET | Arena UI — run duels |
-| `/duels/{scenario}/run` | POST | Execute a duel |
-| `/duels/{duel}/status` | GET | Live duel status |
-| `/duels/{duel}/report` | GET | Full duel report |
-| `/duels/history/all` | GET | Browse past duels |
-| `/api/stats` | GET | Analytics dashboard data |
+```bash
+php artisan arena:demo-security --json
+php artisan arena:security-gate <run-uuid> --json
+php artisan test
+```
 
-## Project Status
+The GitHub Actions workflow runs the Laravel suite plus the deterministic proof. Runtime thresholds are configured with:
 
-| Phase | Status | Notes |
-|-------|--------|-------|
-| Phase 1 — Foundation | Complete | Agents, scenarios, persistence, duel loop |
-| Phase 2 — Defense Layer | Complete | NeMo and LLM Guard service integrations with safe-fail behavior |
-| Phase 3 — Offense + Evaluation | Complete | Adaptive attacker logic and analytics dashboard service |
-| Phase 4 — Landing Page | Complete | Marketing landing page at `/` and arena UI at `/duels` |
+```dotenv
+SECURITY_CI_MAX_FAILED_CASES=0
+SECURITY_CI_MAX_CRITICAL_FINDINGS=0
+```
+
+## GPT-5.6 advisor
+
+The advisor is optional. Add an OpenAI API key and keep proposals subject to review:
+
+```dotenv
+OPENAI_API_KEY=
+SECURITY_ADVISOR_ENABLED=true
+SECURITY_ADVISOR_PROVIDER=openai
+SECURITY_ADVISOR_MODEL=gpt-5.6-sol
+```
+
+Without a configured key, the platform returns a deterministic remediation proposal and marks its provenance accordingly.
+
+## Core API
+
+| Method | Route | Purpose |
+|---|---|---|
+| `GET` | `/api/security/demo` | Deterministic before/after security proof |
+| `GET/POST` | `/api/corpora` | List or import corpora |
+| `POST` | `/api/corpora/{corpus}/runs` | Execute a fingerprinted corpus run |
+| `POST` | `/api/corpus-runs/{run}/findings` | Create structured findings |
+| `POST` | `/api/findings/{finding}/remediation` | Generate a pending proposal |
+| `PATCH` | `/api/remediations/{proposal}/review` | Approve or reject once |
+| `POST` | `/api/attack-surfaces/analyze` | Analyze an agent component graph |
+| `GET` | `/api/corpus-runs/{run}/security-report` | Export traceable control evidence |
+| `GET` | `/api/corpus-runs/{run}/gate` | Evaluate release thresholds |
+
+Mutation endpoints are CSRF-protected and rate-limited. Public deployments should add application authentication and organization-level authorization before exposure.
+
+## Stack
+
+Laravel 12, PHP 8.2+, PostgreSQL, Redis, Prism PHP, Groq/OpenAI/Hugging Face providers, and Docker Compose.
 
 ## License
 

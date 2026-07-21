@@ -28,7 +28,7 @@ docker compose up -d
 ```env
 GROQ_API_KEY=<your-groq-api-key>       # https://console.groq.com (free)
 NEMO_GUARDRAILS_URL=http://nemo-guardrails:8000   # Phase 2 — activate with docker compose --profile guardrails up -d
-LLM_GUARD_URL=http://llm-guard:8001               # Phase 2 — same
+LLM_GUARD_URL=http://llm-guard:8000               # Internal Docker port; host port is 8001
 ```
 
 ---
@@ -71,7 +71,7 @@ LLM_GUARD_URL=http://llm-guard:8001               # Phase 2 — same
   - `strict` — block on any risk > 0.3
   - `moderate` — block > 0.6, allow modify 0.3–0.6
   - `permissive` — block > 0.85
-- **Status:** ✅ Implemented — programmatic thresholds plus LLM-based reasoning over real guardrail scan results.
+- **Status:** Implemented — programmatic thresholds plus LLM-based reasoning over compatible local rule-engine scan results.
 
 ---
 
@@ -106,7 +106,7 @@ LLM_GUARD_URL=http://llm-guard:8001               # Phase 2 — same
 - On connection failure → returns `blocked: false`, logs warning, sets `flagged_for_review: true`.
 - On timeout (2s per global rule) → same safe-fail behavior.
 - Endpoints used: `POST /v1/rails/input`, `POST /v1/rails/output`
-- **Phase 2:** Activate container via `docker compose --profile guardrails up -d`
+- Uses the local `arena-rules-v2` NeMo-compatible adapter, not the upstream NeMo package.
 
 ### `LlmGuardService` — `app/Services/LlmGuardService.php`
 - ✅ **Real implementation — no stubs.**
@@ -114,7 +114,7 @@ LLM_GUARD_URL=http://llm-guard:8001               # Phase 2 — same
 - On connection failure → returns `risk_score: 0.0`, logs warning, sets `flagged_for_review: true`.
 - On timeout (2s) → same safe-fail behavior.
 - Endpoints used: `POST /scan/prompt`, `POST /scan/output`
-- **Phase 2:** Activate container via `docker compose --profile guardrails up -d`
+- Uses the local `arena-rules-v2` LLM Guard-compatible adapter, not the upstream LLM Guard package.
 
 ---
 
@@ -170,7 +170,7 @@ LLM_GUARD_URL=http://llm-guard:8001               # Phase 2 — same
 | Phase | Status | Notes |
 |-------|--------|-------|
 | **Phase 1 — Foundation** | ✅ Complete | Agents, scenarios, persistence, duel loop |
-| **Phase 2 — Defense Layer** | ✅ Complete | NeMo and LLM Guard service integrations with safe-fail behavior |
+| **Phase 2 — Defense Layer** | Complete | Compatible local guardrail adapters with explicit unavailable-control evidence |
 | **Phase 3 — Offense + Evaluation** | ✅ Complete | Attacker adaptation and dashboard analytics service |
 | **Phase 4 — Landing Page** | ✅ Complete | Marketing landing page and arena UI |
 

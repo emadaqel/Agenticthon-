@@ -170,7 +170,7 @@ def block_threshold(policy: str) -> float:
 # ── NeMo-compatible endpoints ─────────────────────────────────────────────────
 @app.get("/v1/health")
 def nemo_health():
-    return {"status": "ok", "service": "nemo-guardrails-lite"}
+    return {"status": "ok", "service": "nemo-compatible-rules", "engine": "arena-rules-v2", "upstream_package": False}
 
 @app.post("/v1/rails/input")
 def rails_input(payload: PromptPayload):
@@ -202,7 +202,7 @@ def rails_output(payload: ResponsePayload):
 # ── LLM Guard-compatible endpoints ────────────────────────────────────────────
 @app.get("/health")
 def llm_guard_health():
-    return {"status": "ok", "service": "llm-guard-lite"}
+    return {"status": "ok", "service": "llm-guard-compatible-scanner", "engine": "arena-rules-v2", "upstream_package": False}
 
 @app.post("/scan/prompt")
 def scan_prompt(payload: PromptPayload):
