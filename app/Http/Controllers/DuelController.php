@@ -42,7 +42,7 @@ class DuelController extends Controller
         $maxTurns      = (int) $request->input('max_turns', 3);
         $policyProfile = $request->input('policy_profile', 'strict');
         $rawModel      = $request->input('target_model', 'llama-3.1-8b-instant');
-        $rawProvider   = $request->input('provider', 'groq');
+        $rawProvider   = $request->input('provider', 'openai');
 
         [$targetModel, $provider] = $this->resolveModelAndProvider($rawModel, $rawProvider);
         $async         = filter_var($request->input('async', false), FILTER_VALIDATE_BOOLEAN);
@@ -115,7 +115,13 @@ class DuelController extends Controller
             );
 
             // 6 ── PolicyJudge scores the turn
-            $judgeInput  = array_merge($attack, ['model_response' => $modelResult['response'], 'defender_verdict' => $defenseResult['verdict'] ?? 'BLOCK']);
+            $judgeInput  = array_merge($attack, [
+                'model_response'          => $modelResult['response'],
+                'defender_verdict'        => $defenseResult['verdict'] ?? 'ALLOW',
+                'scenario_category'       => $scenario->category,
+                'guardrail_input_result'  => $guardInputResult,
+                'guardrail_output_result' => $guardOutputResult,
+            ]);
             $judgeResult = $this->judge->scoreTurn($judgeInput);
 
             // 7 ── Build full turn record & persist
@@ -155,20 +161,22 @@ class DuelController extends Controller
         // 8 ── Final duel summary
         $summary = $this->judge->summarize($duelId, $scenario->category, $turns);
 
-        DuelSummary::create([
-            'duel_id'               => $duelId,
-            'scenario_id'           => $scenario->id,
-            'target_model'          => $targetModel,
-            'policy_profile'        => $policyProfile,
-            'total_turns'           => $summary['total_turns'],
-            'red_team_wins'         => $summary['red_team_wins'],
-            'blue_team_wins'        => $summary['blue_team_wins'],
-            'draws'                 => $summary['draws'],
-            'false_positives'       => $summary['false_positives'],
-            'attack_success_rate'   => $summary['attack_success_rate'],
-            'defense_effectiveness' => $summary['defense_effectiveness'],
-            'owasp_categories'      => $summary['owasp_categories_triggered'],
-        ]);
+        DuelSummary::updateOrCreate(
+            ['duel_id' => $duelId],
+            [
+                'scenario_id'           => $scenario->id,
+                'target_model'          => $targetModel,
+                'policy_profile'        => $policyProfile,
+                'total_turns'           => $summary['total_turns'],
+                'red_team_wins'         => $summary['red_team_wins'],
+                'blue_team_wins'        => $summary['blue_team_wins'],
+                'draws'                 => $summary['draws'],
+                'false_positives'       => $summary['false_positives'],
+                'attack_success_rate'   => $summary['attack_success_rate'],
+                'defense_effectiveness' => $summary['defense_effectiveness'],
+                'owasp_categories'      => $summary['owasp_categories_triggered'],
+            ]
+        );
 
         Cache::put("duel:{$duelId}:status", ['status' => 'complete', 'turns' => $turns, 'summary' => $summary], 600);
 
@@ -231,7 +239,7 @@ class DuelController extends Controller
         $models        = $request->input('models', ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile']);
         $policyProfile = $request->input('policy_profile', 'strict');
         $maxTurns      = (int) $request->input('max_turns', 3);
-        $defaultProvider = $request->input('provider', 'groq');
+        $defaultProvider = $request->input('provider', 'openai');
 
         $results = [];
 
@@ -282,20 +290,22 @@ class DuelController extends Controller
 
             $summary = $this->judge->summarize($duelId, $scenario->category, $turns);
 
-            DuelSummary::create([
-                'duel_id'               => $duelId,
-                'scenario_id'           => $scenario->id,
-                'target_model'          => $modelId,
-                'policy_profile'        => $policyProfile,
-                'total_turns'           => $summary['total_turns'],
-                'red_team_wins'         => $summary['red_team_wins'],
-                'blue_team_wins'        => $summary['blue_team_wins'],
-                'draws'                 => $summary['draws'],
-                'false_positives'       => $summary['false_positives'],
-                'attack_success_rate'   => $summary['attack_success_rate'],
-                'defense_effectiveness' => $summary['defense_effectiveness'],
-                'owasp_categories'      => $summary['owasp_categories_triggered'],
-            ]);
+            DuelSummary::updateOrCreate(
+                ['duel_id' => $duelId],
+                [
+                    'scenario_id'           => $scenario->id,
+                    'target_model'          => $modelId,
+                    'policy_profile'        => $policyProfile,
+                    'total_turns'           => $summary['total_turns'],
+                    'red_team_wins'         => $summary['red_team_wins'],
+                    'blue_team_wins'        => $summary['blue_team_wins'],
+                    'draws'                 => $summary['draws'],
+                    'false_positives'       => $summary['false_positives'],
+                    'attack_success_rate'   => $summary['attack_success_rate'],
+                    'defense_effectiveness' => $summary['defense_effectiveness'],
+                    'owasp_categories'      => $summary['owasp_categories_triggered'],
+                ]
+            );
 
             Cache::put("duel:{$duelId}:status", ['status' => 'complete', 'turns' => $turns, 'summary' => $summary], 600);
 
@@ -323,7 +333,7 @@ class DuelController extends Controller
      * Parse "hf::model/id" prefix → ['model/id', 'huggingface'].
      * Any other string returns [$model, $fallbackProvider].
      */
-    private function resolveModelAndProvider(string $model, string $fallbackProvider = 'groq'): array
+    private function resolveModelAndProvider(string $model, string $fallbackProvider = 'openai'): array
     {
         if (str_starts_with($model, 'hf::')) {
             return [substr($model, 4), 'huggingface'];

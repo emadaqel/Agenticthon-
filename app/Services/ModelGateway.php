@@ -13,7 +13,7 @@ class ModelGateway
         string $prompt,
         string $basePrompt,
         string $targetModel = 'llama-3.1-8b-instant',
-        string $provider    = 'groq',
+        string $provider    = 'openai',
     ): array {
         if ($provider === 'huggingface') {
             return $this->callHuggingFace($prompt, $basePrompt, $targetModel);

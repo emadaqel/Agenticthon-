@@ -2,21 +2,37 @@
 
 > Autonomous Multi-Agent Adversarial Simulation Platform for LLM Safety Testing
 
-Red-Team Arena pits a **Red Team Attacker** against a **Blue Team Defender** in real-time AI duels, with a **Policy Judge** referee scoring every turn against the **OWASP LLM Top 10**.
+Red-Team Arena pits a **Red Team Attacker** against a **Blue Team Defender** in real-time AI duels, with a **Policy Judge** referee scoring every turn against the **OWASP LLM Top 10**. All three agents reason using **OpenAI's `gpt-4o-mini`**, independent of whichever model is under test.
 
 ## Architecture
 
 ```
 ┌──────────────┐     ┌────────────────┐     ┌──────────────────┐
-│  Attacker    │────▶│  NeMo + LLM    │────▶│   Target Model   │
-│  Agent (Red) │     │  Guard (Input) │     │   (Groq LLM)     │
+│  Attacker    │────▶│  NeMo + LLM    │────▶│   Target Model    │
+│  Agent (Red) │     │  Guard (Input) │     │ (Groq / OpenAI /  │
+│ gpt-4o-mini  │     │                │     │  Hugging Face)    │
 └──────────────┘     └────────────────┘     └────────┬─────────┘
                                                       │
 ┌──────────────┐     ┌────────────────┐     ┌────────▼─────────┐
 │ Policy Judge │◀────│   Defender     │◀────│  NeMo + LLM      │
-│  (Referee)   │     │  Agent (Blue)  │     │  Guard (Output)  │
+│ gpt-4o-mini  │     │  Agent (Blue)  │     │  Guard (Output)  │
+│  (Referee)   │     │  gpt-4o-mini   │     │                  │
 └──────────────┘     └────────────────┘     └──────────────────┘
 ```
+
+## How This Project Uses OpenAI Models
+
+Red-Team Arena's entire adversarial loop is driven by OpenAI models — not just the model under test:
+
+| Agent | Role | Model | Provider |
+|-------|------|-------|----------|
+| `AttackerAgent` | Crafts adversarial prompts, adapts technique on block | `gpt-4o-mini` | OpenAI ([app/AI/Agents/AttackerAgent.php](app/AI/Agents/AttackerAgent.php)) |
+| `DefenderAgent` | Evaluates target output against policy profile | `gpt-4o-mini` | OpenAI ([app/AI/Agents/DefenderAgent.php](app/AI/Agents/DefenderAgent.php)) |
+| `PolicyJudgeAgent` | Scores each turn and maps it to OWASP LLM Top 10 | `gpt-4o-mini` | OpenAI ([app/AI/Agents/PolicyJudgeAgent.php](app/AI/Agents/PolicyJudgeAgent.php)) |
+
+These three agents are the "brains" of every duel: the attacker's reasoning, the defender's verdicts, and the judge's scoring are all OpenAI completions, orchestrated through [Prism PHP](https://prismphp.com) in [ModelGateway.php](app/Services/ModelGateway.php).
+
+Separately, the **target model** — the system actually being red-teamed — is configurable per duel and can be OpenAI, Groq (OpenAI-compatible API), or Hugging Face-hosted models, so the same OpenAI-powered attacker/defender/judge pipeline can be pointed at any model under evaluation.
 
 ## Tech Stack
 
@@ -24,7 +40,8 @@ Red-Team Arena pits a **Red Team Attacker** against a **Blue Team Defender** in 
 |-----------|-----------|
 | Backend | Laravel 11 (PHP 8.2+) |
 | AI SDK | Prism PHP v0.100.1 |
-| LLM Provider | Groq (llama3-70b-8192 / llama3-8b-8192) |
+| Agent Reasoning | OpenAI `gpt-4o-mini` (Attacker, Defender, Policy Judge) |
+| Target Model Providers | OpenAI, Groq (llama-3.1/3.3), Hugging Face |
 | Database | PostgreSQL |
 | Cache/Queue | Redis |
 | Guardrails | NeMo Guardrails + LLM Guard |
@@ -39,18 +56,18 @@ git clone <repo-url>
 cd Agenticthon-
 cp .env.example .env
 
-# 2. Set your Groq API key in .env
-# GROQ_API_KEY=your-key-here
+# 2. Set your OpenAI API key in .env (required — powers Attacker/Defender/Policy Judge)
+# OPENAI_API_KEY=your-key-here
 
 # 3. Start with Docker Sail
-docker compose up -d
+docker compose up -d --build
 
 # 4. Setup application
 docker compose exec laravel.test php artisan key:generate
 docker compose exec laravel.test php artisan migrate
 docker compose exec laravel.test php artisan db:seed
 
-# 5. Open http://localhost
+# 5. Open http://localhost:8888
 ```
 
 ### Optional: Enable Guardrails (Phase 2)

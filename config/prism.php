@@ -30,8 +30,8 @@ return [
             'url' => env('MISTRAL_URL', 'https://api.mistral.ai/v1'),
         ],
         'groq' => [
-            'api_key' => env('GROQ_API_KEY', ''),
-            'url' => env('GROQ_URL', 'https://api.groq.com/openai/v1'),
+            'api_key' => '',
+            'url' => 'https://api.groq.com/openai/v1',
         ],
         'xai' => [
             'api_key' => env('XAI_API_KEY', ''),

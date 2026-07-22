@@ -4,10 +4,10 @@
 models:
   - type: main
     engine: openai
-    model: llama3-8b-8192
+    model: gpt-4o-mini
     parameters:
-      api_base: https://api.groq.com/openai/v1
-      api_key: ${GROQ_API_KEY}
+      api_base: https://api.openai.com/v1
+      api_key: ${OPENAI_API_KEY}
 
 # Rails configuration
 rails:

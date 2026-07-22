@@ -336,7 +336,7 @@
             <div class="feat">
                 <div class="feat-icon feat-icon-purple">🤖</div>
                 <div class="feat-title">Multi-Model Comparison</div>
-                <div class="feat-desc">Run the same adversarial scenario against multiple models simultaneously. Compare vulnerability profiles side-by-side across Groq and Hugging Face.</div>
+                <div class="feat-desc">Run the same adversarial scenario against multiple models simultaneously. Compare vulnerability profiles side-by-side across OpenAI and Hugging Face.</div>
             </div>
             <div class="feat">
                 <div class="feat-icon feat-icon-cyan">📄</div>
@@ -447,7 +447,7 @@
         <div class="section-badge">Integrations</div>
         <h2 class="section-title" style="font-size:1.6rem;">Works with your existing stack</h2>
         <div class="integrations">
-            <div class="integration-badge"><div class="int-dot" style="background:#f97316;"></div>Groq AI</div>
+            <div class="integration-badge"><div class="int-dot" style="background:#10a37f;"></div>OpenAI</div>
             <div class="integration-badge"><div class="int-dot" style="background:#ffd21e;"></div>Hugging Face</div>
             <div class="integration-badge"><div class="int-dot" style="background:#10a37f;"></div>OpenAI Compatible</div>
             <div class="integration-badge"><div class="int-dot" style="background:#0ea5e9;"></div>NVIDIA NeMo</div>
@@ -475,7 +475,7 @@
                 <ul class="price-features">
                     <li><span class="check">✓</span> All 6 built-in scenarios</li>
                     <li><span class="check">✓</span> Custom scenario builder</li>
-                    <li><span class="check">✓</span> Groq + HuggingFace models</li>
+                    <li><span class="check">✓</span> OpenAI + HuggingFace models</li>
                     <li><span class="check">✓</span> HTML executive reports</li>
                     <li><span class="check">✓</span> Full audit trail</li>
                 </ul>

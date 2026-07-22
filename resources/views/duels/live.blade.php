@@ -60,18 +60,20 @@
         .combat-hud-top{display:flex;align-items:center;justify-content:center;gap:1.5rem;}
         .fighter-side{display:flex;align-items:center;gap:.65rem;flex:1;}
         .fighter-side.blue{flex-direction:row-reverse;text-align:right;}
-        .fighter-avatar{width:2.5rem;height:2.5rem;border-radius:.5rem;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
-        .fighter-avatar.red{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);box-shadow:0 0 12px rgba(239,68,68,.12);}
-        .fighter-avatar.blue{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);box-shadow:0 0 12px rgba(59,130,246,.12);}
+        .fighter-avatar{width:4rem;height:4rem;border-radius:1rem;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;position:relative;z-index:2;}
+        .fighter-avatar.red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);box-shadow:0 0 30px rgba(239,68,68,.15);}
+        .fighter-avatar.blue{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);box-shadow:0 0 30px rgba(59,130,246,.15);}
+        .fighter-avatar::after{content:'';position:absolute;inset:-4px;border-radius:inherit;border:1px solid inherit;opacity:.4;animation:pulse-ring 2s ease-out infinite;}
+        @keyframes pulse-ring{0%{transform:scale(1);opacity:.4;}100%{transform:scale(1.3);opacity:0;}}
         .fighter-info{flex:1;min-width:0;}
         .fighter-name{font-family:var(--arena-font);font-size:.6rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;}
         .fighter-name.red{color:#fca5a5;}
         .fighter-name.blue{color:#93c5fd;}
         .fighter-wins{font-size:.65rem;color:var(--muted2);font-weight:700;margin-top:.15rem;}
-        .hp-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:.25rem;}
-        .hp-fill{height:100%;border-radius:99px;transition:width .6s ease;}
-        .hp-fill.red{background:linear-gradient(90deg,#dc2626,#ef4444);}
-        .hp-fill.blue{background:linear-gradient(90deg,#1d4ed8,#3b82f6);}
+        .hp-bar{height:10px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:.4rem;border:1px solid rgba(255,255,255,.05);}
+        .hp-fill{height:100%;border-radius:99px;transition:width .8s cubic-bezier(0.34, 1.56, 0.64, 1);}
+        .hp-fill.red{background:linear-gradient(90deg,#dc2626,#f97316);box-shadow:0 0 10px rgba(239,68,68,.4);}
+        .hp-fill.blue{background:linear-gradient(90deg,#1d4ed8,#06b6d4);box-shadow:0 0 10px rgba(59,130,246,.4);}
         .vs-badge{font-family:var(--arena-font);font-size:1rem;font-weight:900;color:var(--orange);text-shadow:0 0 18px rgba(249,115,22,.35);flex-shrink:0;}
         .combat-progress{margin-top:.6rem;}
         .combat-progress-bar{height:3px;border-radius:99px;background:rgba(255,255,255,.05);overflow:hidden;}
@@ -187,9 +189,17 @@
             background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.2);
         }
 
-        .verdict-BLOCK{color:#fca5a5;font-weight:800;}
-        .verdict-ALLOW{color:#86efac;font-weight:800;}
         .verdict-MODIFY{color:#fde047;font-weight:800;}
+
+        /* ── Combat Log ── */
+        .combat-log{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:.5rem;padding:.75rem;margin-top:1.5rem;font-family:var(--mono);font-size:.65rem;max-height:150px;overflow-y:auto;}
+        .log-entry{display:flex;gap:.6rem;padding:.2rem 0;border-bottom:1px solid rgba(255,255,255,.03);}
+        .log-entry:last-child{border-bottom:none;}
+        .log-time{color:var(--muted);}
+        .log-tag{font-weight:800;text-transform:uppercase;}
+        .log-tag.red{color:var(--red);}
+        .log-tag.blue{color:var(--blue);}
+        .log-tag.sys{color:var(--muted2);}
 
         /* ── "Thinking" live row ── */
         .thinking-row{
@@ -266,7 +276,7 @@
 
     <div class="meta">
         <span class="chip chip-muted" x-text="meta.scenario || 'Loading...'"></span>
-        <span class="chip chip-blue" x-text="meta.model || '...'"></span>
+        <span class="chip chip-blue" x-text="maskModel(meta.model)"></span>
         <span class="chip" :class="{'chip-red':'permissive'===meta.policy,'chip-green':'strict'===meta.policy,'chip-yellow':'moderate'===meta.policy}" x-text="meta.policy || '...'"></span>
 
         <div x-show="status==='running'" class="status-running">
@@ -292,19 +302,19 @@
     <div class="combat-hud" x-show="status !== 'not_found'">
         <div class="combat-hud-top">
             <div class="fighter-side">
-                <div class="fighter-avatar red" style="animation:fighter-idle 3s ease infinite;">🔴</div>
+                <div class="fighter-avatar red" style="animation:fighter-idle 3s ease infinite;">👹</div>
                 <div class="fighter-info">
-                    <div class="fighter-name red">ATTACKER</div>
-                    <div class="fighter-wins">Wins: <span x-text="redWins">0</span></div>
+                    <div class="fighter-name red">RED AGENT — ATTACKER</div>
+                    <div class="fighter-wins">Successful Breaches: <span x-text="redWins" style="color:var(--red)">0</span></div>
                     <div class="hp-bar"><div class="hp-fill red" :style="`width:${redHpPct}%`"></div></div>
                 </div>
             </div>
             <div class="vs-badge">VS</div>
             <div class="fighter-side blue">
-                <div class="fighter-avatar blue" style="animation:fighter-idle 3s ease infinite;animation-delay:.5s;">🔵</div>
+                <div class="fighter-avatar blue" style="animation:fighter-idle 3s ease infinite;animation-delay:.5s;">🛡️</div>
                 <div class="fighter-info">
-                    <div class="fighter-name blue">DEFENDER</div>
-                    <div class="fighter-wins">Wins: <span x-text="blueWins">0</span></div>
+                    <div class="fighter-name blue">BLUE AGENT — DEFENDER</div>
+                    <div class="fighter-wins">Attacks Blocked: <span x-text="blueWins" style="color:var(--blue)">0</span></div>
                     <div class="hp-bar"><div class="hp-fill blue" :style="`width:${blueHpPct}%`"></div></div>
                 </div>
             </div>
@@ -320,11 +330,11 @@
         </div>
     </div>
 
-    <!-- Waiting spinner -->
-    <div class="waiting-box" x-show="status==='waiting' || (status==='running' && turns.length===0)">
+    <!-- Waiting spinner (only before first turn arrives) -->
+    <div class="waiting-box" x-show="status==='waiting' || (status==='running' && turns.length===0 && !phaseLabel)">
         <div class="waiting-spinner"></div>
         <div class="waiting-title">Agents Initialising<span class="thinking-dots"></span></div>
-        <div class="waiting-sub">Attacker Agent is crafting the first adversarial prompt via Groq AI</div>
+        <div class="waiting-sub">Connecting agents and preparing the adversarial simulation…</div>
     </div>
 
     <!-- Round Announce -->
@@ -407,16 +417,40 @@
             </div>
         </template>
 
-        <!-- Live thinking indicator -->
-        <template x-if="status === 'running' && turns.length > 0">
-            <div class="turn-card" style="border-color:rgba(59,130,246,.2);opacity:1;transform:none;">
+        <!-- Live thinking indicator — shows current phase -->
+        <template x-if="status === 'running'">
+            <div class="turn-card" style="border-color:rgba(59,130,246,.18);opacity:1;transform:none;">
                 <div class="turn-header">
-                    <div class="turn-num" x-text="'T' + (turns.length + 1)"></div>
-                    <div class="turn-title">Processing Turn <span x-text="turns.length + 1"></span><span class="thinking-dots"></span></div>
+                    <div class="turn-num" x-text="currentTurn ? 'T' + currentTurn : '…'"></div>
+                    <div class="turn-title">
+                        Turn <span x-text="currentTurn || (turns.length + 1)"></span>
+                        <span class="thinking-dots"></span>
+                    </div>
+                    <span class="chip chip-muted" style="font-size:.6rem;padding:.14rem .5rem;animation:none;">IN PROGRESS</span>
                 </div>
-                <div style="padding:.75rem .85rem;display:flex;align-items:center;gap:.6rem;font-size:.72rem;color:var(--muted);">
-                    <div class="waiting-spinner" style="width:1rem;height:1rem;margin:0;"></div>
-                    🔴 Crafting adversarial prompt<span class="thinking-dots"></span>
+                <div style="padding:.85rem;display:flex;flex-direction:column;gap:.6rem;">
+                    <!-- Phase steps -->
+                    <template x-for="(step, idx) in [
+                        {phase:'attacker',     icon:'🔴', label:'Red Agent crafting adversarial prompt'},
+                        {phase:'guardrail_in', icon:'🛡', label:'Guardrails scanning input'},
+                        {phase:'model',        icon:'🤖', label:'Target model responding'},
+                        {phase:'defender',     icon:'🔵', label:'Blue Agent evaluating response'},
+                        {phase:'judge',        icon:'⚖', label:'Judge scoring the round'},
+                    ]" :key="step.phase">
+                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.73rem;"
+                             :style="phaseLabel && phaseLabel.includes(step.icon) ? 'color:var(--text)' : 'color:var(--muted);opacity:.45'">
+                            <div style="width:1rem;height:1rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                                <template x-if="phaseLabel && phaseLabel.includes(step.icon)">
+                                    <div class="waiting-spinner" style="width:1rem;height:1rem;margin:0;"></div>
+                                </template>
+                                <template x-if="!(phaseLabel && phaseLabel.includes(step.icon))">
+                                    <span x-text="step.icon"></span>
+                                </template>
+                            </div>
+                            <span x-text="step.label"></span>
+                            <span x-show="phaseLabel && phaseLabel.includes(step.icon)" class="thinking-dots" style="color:var(--muted2);"></span>
+                        </div>
+                    </template>
                 </div>
             </div>
         </template>
@@ -474,6 +508,26 @@
         </div>
     </template>
 
+    <!-- Combat Log -->
+    <div class="combat-log" x-show="turns.length > 0" style="margin-top: 1.5rem;">
+        <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;font-family:var(--arena-font);">Combat Activity Log</div>
+        <template x-for="t in turns" :key="'log-'+t.turn">
+            <div class="log-entry">
+                <span class="log-time" x-text="'[' + t.turn + ']'"></span>
+                <span class="log-tag red">RED</span>
+                <span x-text="'deployed ' + (t.attacker_technique||'attack').replace(/_/g,' ')"></span>
+                <span class="log-tag blue" x-show="t.defender_verdict">BLUE</span>
+                <span x-show="t.defender_verdict" x-text="'responded with ' + t.defender_verdict"></span>
+                <span :class="'outcome-'+(t.judge_outcome||'draw')" style="font-weight:800;margin-left:auto;" x-text="(t.judge_outcome||'DRAW').toUpperCase()"></span>
+            </div>
+        </template>
+        <div class="log-entry" x-show="status==='running'">
+            <span class="log-time">[..]</span>
+            <span class="log-tag sys">SYS</span>
+            <span class="thinking-dots">Agents negotiating turn <span x-text="turns.length+1"></span></span>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -489,6 +543,8 @@ function liveApp() {
         meta: {},
         pollInterval: null,
         knownTurns: 0,
+        phaseLabel: null,
+        currentTurn: 0,
 
         get redWins()  { return this.turns.filter(t => t.judge_outcome === 'red_team_win').length; },
         get blueWins() { return this.turns.filter(t => t.judge_outcome === 'blue_team_win').length; },
@@ -501,6 +557,22 @@ function liveApp() {
             if (this.turns.length === 0) return 100;
             const blueLosses = this.turns.filter(t => t.judge_outcome === 'red_team_win').length;
             return Math.max(5, 100 - (blueLosses / Math.max(1, this.turns.length)) * 100);
+        },
+        maskModel(modelId) {
+            if (!modelId) return '...';
+            const map = {
+                'Qwen/Qwen2.5-7B-Instruct:together':          'Qwen 2.5 7B Instruct',
+                'Qwen/Qwen2.5-7B-Instruct':                   'Qwen 2.5 7B Instruct',
+                'meta-llama/Llama-3.3-70B-Instruct:together': 'Llama 3.3 70B Instruct',
+                'meta-llama/Llama-3.3-70B-Instruct':          'Llama 3.3 70B Instruct',
+                'deepseek-ai/DeepSeek-R1:together':           'DeepSeek R1',
+                'deepseek-ai/DeepSeek-R1':                    'DeepSeek R1',
+                'moonshotai/Kimi-K2-Instruct':                'Kimi K2 Instruct',
+                'mistralai/Mistral-7B-Instruct-v0.3':         'Mistral 7B Instruct',
+                'microsoft/Phi-3.5-mini-instruct':            'Phi-3.5 Mini Instruct',
+            };
+            const bare = modelId.replace(/^hf::/, '');
+            return map[bare] || bare;
         },
         get progressPct() {
             if (this.status === 'complete') return 100;
@@ -537,12 +609,15 @@ function liveApp() {
                     };
                 }
 
+                // Track live phase for the thinking indicator
+                this.phaseLabel  = data.phase_label  || null;
+                this.currentTurn = data.current_turn || 0;
+
                 // Only update turns if new ones arrived (avoid re-render flicker)
                 const incoming = data.turns || [];
                 if (incoming.length > this.knownTurns) {
                     this.turns = incoming;
                     this.knownTurns = incoming.length;
-                    // Auto-scroll to bottom
                     this.$nextTick(() => {
                         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                     });
@@ -551,6 +626,7 @@ function liveApp() {
                 if (data.summary) this.summary = data.summary;
 
                 if (this.status === 'complete') {
+                    this.phaseLabel = null;
                     clearInterval(this.pollInterval);
                 }
             } catch(e) {

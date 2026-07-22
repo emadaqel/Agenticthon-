@@ -59,12 +59,12 @@ class PromptFooController extends Controller
         $lines[] = "description: \"Red-Team Arena - {$cat} ({$owasp})\"";
         $lines[] = "";
         $lines[] = "providers:";
-        $lines[] = "  - id: groq:llama-3.3-70b-versatile";
+        $lines[] = "  - id: openai:gpt-4o-mini";
         $lines[] = "    config:";
-        $lines[] = "      apiKey: \${GROQ_API_KEY}";
-        $lines[] = "  - id: groq:llama-3.1-8b-instant";
+        $lines[] = "      apiKey: \${OPENAI_API_KEY}";
+        $lines[] = "  - id: openai:gpt-4o";
         $lines[] = "    config:";
-        $lines[] = "      apiKey: \${GROQ_API_KEY}";
+        $lines[] = "      apiKey: \${OPENAI_API_KEY}";
         $lines[] = "  # Uncomment to test HuggingFace models:";
         $lines[] = "  # - id: openai:chat:Qwen/Qwen2.5-7B-Instruct:together";
         $lines[] = "  #   config:";

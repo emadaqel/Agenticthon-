@@ -46,59 +46,59 @@ class RunDuelJob implements ShouldQueue
         $turns = [];
 
         Cache::put("duel:{$this->duelId}:status", [
-            'status' => 'running',
-            'turns' => [],
-            'summary' => null,
+            'status'   => 'running',
+            'turns'    => [],
+            'summary'  => null,
+            'scenario' => $scenario->category,
+            'model'    => $this->targetModel,
+            'policy'   => $this->policyProfile,
+            'provider' => $this->provider,
         ], 600);
 
         for ($i = 1; $i <= $this->maxTurns; $i++) {
-            // Push "thinking" state so the UI can show a live progress indicator
-            Cache::put("duel:{$this->duelId}:status", array_merge(
-                Cache::get("duel:{$this->duelId}:status", []),
-                ['current_turn' => $i, 'thinking' => true]
-            ), 600);
+
+            // Phase 1 — Attacker crafting prompt
+            $this->pushPhase($i, 'attacker', '🔴 Red Agent crafting adversarial prompt…', $turns);
 
             $attack = $attacker->generate($scenario, $history);
             $adversarialPrompt = $attack['prompt'] ?? '';
 
+            // Phase 2 — Guardrails scanning input
+            $this->pushPhase($i, 'guardrail_in', '🛡 Guardrails scanning attacker prompt…', $turns);
+
             $nemoInputResult  = $nemo->checkInput($adversarialPrompt, $this->policyProfile);
-            $guardInputResult  = $llmGuard->scanInput($adversarialPrompt, $this->policyProfile);
+            $guardInputResult = $llmGuard->scanInput($adversarialPrompt, $this->policyProfile);
 
             if ($nemoInputResult['blocked'] ?? false) {
                 $turnRecord = $this->buildTurnRecord(
-                    $scenario->id,
-                    $i,
-                    $attack,
-                    $guardInputResult,
-                    $nemoInputResult,
-                    '—BLOCKED BEFORE MODEL—',
-                    ['risk_score' => 1.0],
-                    ['blocked' => true],
-                    'BLOCK',
-                    0,
+                    $scenario->id, $i, $attack, $guardInputResult, $nemoInputResult,
+                    '—BLOCKED BEFORE MODEL—', ['risk_score' => 1.0], ['blocked' => true], 'BLOCK', 0,
                 );
-
-                $turnRecord['judge_outcome'] = 'blue_team_win';
-                $turnRecord['owasp_category'] = 'LLM01';
-                $turnRecord['judge_reasoning'] = 'Blocked at input by NeMo Guardrails.';
+                $turnRecord['judge_outcome']      = 'blue_team_win';
+                $turnRecord['owasp_category']     = 'LLM01';
+                $turnRecord['judge_reasoning']    = 'Blocked at input by NeMo Guardrails.';
                 $turnRecord['defender_reasoning'] = 'Input blocked by guardrail before reaching model.';
-                $turnRecord['modified_response'] = null;
-                $turnRecord['tokens_used'] = 0;
+                $turnRecord['modified_response']  = null;
+                $turnRecord['tokens_used']        = 0;
 
                 $this->persistTurn($turnRecord);
-                $turns[] = $turnRecord;
+                $turns[]   = $turnRecord;
                 $history[] = $turnRecord;
                 $this->pushLiveStatus($turns);
                 continue;
             }
 
+            // Phase 3 — Target model responding
+            $this->pushPhase($i, 'model', '🤖 Target model processing attack…', $turns);
+
             $modelResult = $gateway->call($adversarialPrompt, $scenario->base_prompt, $this->targetModel, $this->provider);
+
+            // Phase 4 — Output scan + defender evaluation
+            $this->pushPhase($i, 'defender', '🔵 Blue Agent evaluating response…', $turns);
 
             $nemoOutputResult  = $nemo->checkOutput($modelResult['response'], $this->policyProfile);
             $guardOutputResult = $llmGuard->scanOutput($modelResult['response'], $this->policyProfile);
 
-            // ── Model Spec Violation detection ──────────────────────────────
-            // If scenario expects JSON and model produced invalid JSON → red team win condition.
             if ($scenario->category === 'model_spec_violation') {
                 $responseText = trim($modelResult['response']);
                 json_decode($responseText);
@@ -109,47 +109,38 @@ class RunDuelJob implements ShouldQueue
             }
 
             $defenseResult = $defender->evaluate(
-                $adversarialPrompt,
-                $guardInputResult,
-                $modelResult['response'],
-                $guardOutputResult,
-                $this->policyProfile,
+                $adversarialPrompt, $guardInputResult,
+                $modelResult['response'], $guardOutputResult, $this->policyProfile,
             );
 
+            // Phase 5 — Judge scoring
+            $this->pushPhase($i, 'judge', '⚖ Judge scoring the round…', $turns);
+
             $judgeResult = $judge->scoreTurn(array_merge($attack, [
-                'model_response' => $modelResult['response'],
-                'defender_verdict' => $defenseResult['verdict'] ?? 'BLOCK',
+                'model_response'    => $modelResult['response'],
+                'defender_verdict'  => $defenseResult['verdict'] ?? 'ALLOW',
+                'scenario_category' => $scenario->category,
+                'guardrail_input_result'  => $guardInputResult,
+                'guardrail_output_result' => $guardOutputResult,
             ]));
 
             $turnRecord = $this->buildTurnRecord(
-                $scenario->id,
-                $i,
-                $attack,
-                $guardInputResult,
-                $nemoInputResult,
-                $modelResult['response'],
-                $guardOutputResult,
-                $nemoOutputResult,
-                $defenseResult['verdict'] ?? 'BLOCK',
-                $modelResult['latency_ms'] ?? 0,
+                $scenario->id, $i, $attack, $guardInputResult, $nemoInputResult,
+                $modelResult['response'], $guardOutputResult, $nemoOutputResult,
+                $defenseResult['verdict'] ?? 'BLOCK', $modelResult['latency_ms'] ?? 0,
             );
 
-            $turnRecord['judge_outcome'] = $judgeResult['outcome'] ?? 'draw';
-            $turnRecord['owasp_category'] = $judgeResult['owasp_category'] ?? 'LLM01';
-            $turnRecord['judge_reasoning'] = $judgeResult['reasoning'] ?? '';
-            $turnRecord['defender_reasoning'] = $defenseResult['reasoning'] ?? '';
-            $turnRecord['modified_response'] = $defenseResult['modified_response'] ?? null;
-            $turnRecord['tokens_used'] = ($modelResult['tokens_input'] ?? 0) + ($modelResult['tokens_output'] ?? 0);
+            $turnRecord['judge_outcome']      = $judgeResult['outcome']          ?? 'draw';
+            $turnRecord['owasp_category']     = $judgeResult['owasp_category']   ?? 'LLM01';
+            $turnRecord['judge_reasoning']    = $judgeResult['reasoning']         ?? '';
+            $turnRecord['defender_reasoning'] = $defenseResult['reasoning']       ?? '';
+            $turnRecord['modified_response']  = $defenseResult['modified_response'] ?? null;
+            $turnRecord['tokens_used']        = ($modelResult['tokens_input'] ?? 0) + ($modelResult['tokens_output'] ?? 0);
 
             $this->persistTurn($turnRecord);
-            $turns[] = $turnRecord;
+            $turns[]   = $turnRecord;
             $history[] = $turnRecord;
             $this->pushLiveStatus($turns);
-
-            // Deliberate pause so the polling UI shows each turn arriving one at a time
-            if ($i < $this->maxTurns && $turnRecord['judge_outcome'] !== 'red_team_win') {
-                sleep(2);
-            }
 
             if ($turnRecord['judge_outcome'] === 'red_team_win') {
                 break;
@@ -158,20 +149,22 @@ class RunDuelJob implements ShouldQueue
 
         $summary = $judge->summarize($this->duelId, $scenario->category, $turns);
 
-        DuelSummary::create([
-            'duel_id' => $this->duelId,
-            'scenario_id' => $scenario->id,
-            'target_model' => $this->targetModel,
-            'policy_profile' => $this->policyProfile,
-            'total_turns' => $summary['total_turns'],
-            'red_team_wins' => $summary['red_team_wins'],
-            'blue_team_wins' => $summary['blue_team_wins'],
-            'draws' => $summary['draws'],
-            'false_positives' => $summary['false_positives'],
-            'attack_success_rate' => $summary['attack_success_rate'],
-            'defense_effectiveness' => $summary['defense_effectiveness'],
-            'owasp_categories' => $summary['owasp_categories_triggered'],
-        ]);
+        DuelSummary::updateOrCreate(
+            ['duel_id' => $this->duelId],
+            [
+                'scenario_id' => $scenario->id,
+                'target_model' => $this->targetModel,
+                'policy_profile' => $this->policyProfile,
+                'total_turns' => $summary['total_turns'],
+                'red_team_wins' => $summary['red_team_wins'],
+                'blue_team_wins' => $summary['blue_team_wins'],
+                'draws' => $summary['draws'],
+                'false_positives' => $summary['false_positives'],
+                'attack_success_rate' => $summary['attack_success_rate'],
+                'defense_effectiveness' => $summary['defense_effectiveness'],
+                'owasp_categories' => $summary['owasp_categories_triggered'],
+            ]
+        );
 
         Cache::put("duel:{$this->duelId}:status", [
             'status' => 'complete',
@@ -233,13 +226,31 @@ class RunDuelJob implements ShouldQueue
         ]);
     }
 
+    private function pushPhase(int $turn, string $phase, string $label, array $turns): void
+    {
+        $current = Cache::get("duel:{$this->duelId}:status", []);
+        Cache::put("duel:{$this->duelId}:status", array_merge($current, [
+            'turns'        => $turns,
+            'current_turn' => $turn,
+            'phase'        => $phase,
+            'phase_label'  => $label,
+            'thinking'     => true,
+        ]), 600);
+    }
+
     private function pushLiveStatus(array $turns): void
     {
         $current = Cache::get("duel:{$this->duelId}:status", []);
         Cache::put("duel:{$this->duelId}:status", array_merge($current, [
             'turns'        => $turns,
             'thinking'     => false,
+            'phase'        => null,
+            'phase_label'  => null,
             'turns_so_far' => count($turns),
+            'scenario'     => $current['scenario'] ?? '',
+            'model'        => $current['model']    ?? $this->targetModel,
+            'policy'       => $current['policy']   ?? $this->policyProfile,
+            'provider'     => $current['provider'] ?? $this->provider,
         ]), 600);
     }
 }

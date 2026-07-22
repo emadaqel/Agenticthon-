@@ -10,8 +10,8 @@ use Prism\Prism\ValueObjects\Messages\AssistantMessage;
 
 class AttackerAgent
 {
-    protected string $provider = 'groq';
-    protected string $model    = 'llama-3.3-70b-versatile';
+    protected string $llmProvider = 'openai';
+    protected string $model       = 'gpt-4o-mini';
 
     protected array $techniqueFamilies = [
         'persona'     => ['role_play_framing', 'authority_impersonation'],
@@ -129,7 +129,7 @@ class AttackerAgent
 
         try {
             $response = Prism::text()
-                ->using($this->provider, $this->model)
+                ->using($this->llmProvider, $this->model)
                 ->withMessages($messages)
                 ->withMaxTokens(1024)
                 ->generate();
